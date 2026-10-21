@@ -739,12 +739,16 @@ function App() {
   </div> : <div className={`file-row ${activeFile === node.path ? 'selected' : ''}`} key={node.path} style={{ paddingLeft: 15 + depth * 13 }}>
     <button className="file-select" onClick={() => { setActiveFile(node.path); setSelectedCurveId(null); setWorkspaceMode('code') }}><FileCode2 size={14} /><span>{node.name}</span></button>
     <button className={`entry-button ${project.manifest.entry === node.path ? 'is-entry' : ''}`} disabled={!isProjectEntry(node.path, project.manifest.projectType)} onClick={() => {
-      setProject((current) => ({ ...current, manifest: { ...current.manifest, entry: node.path } }))
+      if (projectRef.current.manifest.entry === node.path) return
+      const nextProject = { ...projectRef.current, manifest: { ...projectRef.current.manifest, entry: node.path } }
+      projectRef.current = nextProject
+      setProject(nextProject)
       setActiveFile(node.path)
       setSaved(false)
       setMessage(`Entry file set to ${node.path}`)
+      void applyCode()
     }} title={project.manifest.entry === node.path ? 'Entry file' : 'Set as entry file'}><Circle size={9} fill={project.manifest.entry === node.path ? 'currentColor' : 'none'} /></button>
-    {project.manifest.entry !== node.path && <button className="file-remove" onClick={() => removeFile(node.path)} title={`Remove ${node.path}`}><Square size={11} /></button>}
+    {project.manifest.entry !== node.path && <button className="file-remove" onClick={() => removeFile(node.path)} title={`Remove ${node.path}`} aria-label={`Remove ${node.path}`}><Trash2 size={12} /></button>}
   </div>)
 
   return (
