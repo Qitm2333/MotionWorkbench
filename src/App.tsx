@@ -3,7 +3,7 @@ import type { DragEvent as ReactDragEvent, PointerEvent as ReactPointerEvent, Re
 import Editor, { loader } from '@monaco-editor/react'
 import * as monaco from 'monaco-editor'
 import { ModuleResolutionKind, typescriptDefaults } from 'monaco-editor/languages/features/typescript/register.js'
-import { Activity, AlertCircle, Check, ChevronDown, ChevronRight, Circle, Copy, Download, FileCode2, FilePlus2, Folder, FolderOpen, FolderPlus, Maximize2, Minimize2, Moon, Play, RotateCcw, Save, SlidersHorizontal, Square, Sun, Trash2, Upload, Waves, X } from 'lucide-react'
+import { Activity, AlertCircle, Check, ChevronDown, ChevronRight, Circle, Copy, Download, FileCode2, FilePlus2, Folder, FolderOpen, FolderPlus, Maximize2, Minimize2, Moon, Pencil, Play, RotateCcw, Save, SlidersHorizontal, Square, Sun, Trash2, Upload, Waves, X } from 'lucide-react'
 import './App.css'
 import { createCurveFromPreset, curvePresets, isAllowedProjectFile, isProjectEntry, isProjectSource, readProjectDirectory, sampleCurveValue, starterHtmlProject, starterProject, validateProject, writeProjectDirectory } from './project'
 import type { CurveResource, DirectoryHandle, Project } from './project'
@@ -69,6 +69,53 @@ function buildFileTree(paths: string[]): FileTreeNode[] {
   }
   sort(root)
   return root
+}
+
+function resolveRelativeProjectPath(fromFile: string, reference: string) {
+  if (!reference.startsWith('./') && !reference.startsWith('../')) return null
+  const parts = [...fromFile.split('/').slice(0, -1), ...reference.split('/')]
+  const resolved: string[] = []
+  for (const part of parts) {
+    if (!part || part === '.') continue
+    if (part === '..') {
+      if (!resolved.length) return null
+      resolved.pop()
+    } else {
+      resolved.push(part)
+    }
+  }
+  return resolved.join('/')
+}
+
+function relativeProjectPath(fromFile: string, targetFile: string) {
+  const fromDirectory = fromFile.split('/').slice(0, -1)
+  const targetParts = targetFile.split('/')
+  let common = 0
+  while (common < fromDirectory.length && common < targetParts.length && fromDirectory[common] === targetParts[common]) common += 1
+  const relativeParts = [...Array(fromDirectory.length - common).fill('..'), ...targetParts.slice(common)]
+  return `./${relativeParts.join('/')}`
+}
+
+function rewriteRelativeProjectReferences(files: Record<string, string>, oldPath: string, nextPath: string) {
+  const oldPathWithoutExtension = oldPath.replace(/\.(?:[cm]?[jt]sx?|html?|css)$/i, '')
+  const oldExtension = oldPath.slice(oldPathWithoutExtension.length)
+  const nextPathWithoutExtension = nextPath.replace(/\.(?:[cm]?[jt]sx?|html?|css)$/i, '')
+  let changedReferences = 0
+  const nextFiles = Object.fromEntries(Object.entries(files).map(([filePath, contents]) => {
+    const rewritten = contents.replace(/(["'`])((?:\.\.\/|\.\/)[^"'`]+)\1/g, (full, quote: string, reference: string) => {
+      if (reference.includes('${')) return full
+      const referencePath = reference.split(/[?#]/, 1)[0]
+      const suffix = reference.slice(referencePath.length)
+      const resolved = resolveRelativeProjectPath(filePath, referencePath)
+      if (resolved !== oldPath && resolved !== oldPathWithoutExtension) return full
+      const usesExtension = resolved === oldPath || referencePath.toLowerCase().endsWith(oldExtension.toLowerCase())
+      const replacement = relativeProjectPath(filePath, usesExtension ? nextPath : nextPathWithoutExtension)
+      changedReferences += 1
+      return `${quote}${replacement}${suffix}${quote}`
+    })
+    return [filePath, rewritten]
+  }))
+  return { files: nextFiles, changedReferences }
 }
 
 function App() {
@@ -246,7 +293,8 @@ function App() {
       return
     }
     try {
-      const handle = await window.showDirectoryPicker({ mode: 'readwrite' }) as DirectoryHandle
+      // Opening an existing project only needs read access. Save requests write access later.
+      const handle = await window.showDirectoryPicker({ mode: 'read' }) as DirectoryHandle
       const opened = await readProjectDirectory(handle)
       runtimeRef.current?.dispose()
       runtimeRef.current = null
@@ -687,13 +735,55 @@ function App() {
       setMessage('The entry file cannot be removed')
       return
     }
-    setProject((current) => {
-      const files = { ...current.files }
-      delete files[path]
-      return { ...current, files }
-    })
-    if (activeFile === path) setActiveFile(project.manifest.entry)
+    const nextProject = {
+      ...projectRef.current,
+      files: Object.fromEntries(Object.entries(projectRef.current.files).filter(([filePath]) => filePath !== path)),
+    }
+    projectRef.current = nextProject
+    setProject(nextProject)
+    if (activeFile === path) setActiveFile(projectRef.current.manifest.entry)
     setSaved(false)
+    setMessage(`Removed ${path}`)
+    void applyCode()
+  }
+
+  const renameFile = (path: string) => {
+    const currentProject = projectRef.current
+    if (!(path in currentProject.files)) return
+    const slash = path.lastIndexOf('/')
+    const directory = slash >= 0 ? path.slice(0, slash) : ''
+    const currentName = slash >= 0 ? path.slice(slash + 1) : path
+    const requestedName = window.prompt('Rename file', currentName)?.trim()
+    if (!requestedName || requestedName === currentName) return
+    if (requestedName === '.' || requestedName === '..' || /[\\/]/.test(requestedName)) {
+      setMessage('Use a file name without a folder path')
+      return
+    }
+    const nextPath = directory ? `${directory}/${requestedName}` : requestedName
+    if (!isAllowedProjectFile(nextPath, currentProject.manifest.projectType)) {
+      setMessage(`Use a supported ${currentProject.manifest.projectType === 'html' ? 'HTML, CSS, or JavaScript' : 'JavaScript or TypeScript'} file name`)
+      return
+    }
+    if (nextPath in currentProject.files) {
+      setMessage(`A file already exists at ${nextPath}`)
+      return
+    }
+    const renamedFiles = rewriteRelativeProjectReferences(currentProject.files, path, nextPath)
+    const nextFiles = { ...renamedFiles.files, [nextPath]: renamedFiles.files[path] }
+    delete nextFiles[path]
+    const nextProject = {
+      ...currentProject,
+      files: nextFiles,
+      manifest: currentProject.manifest.entry === path
+        ? { ...currentProject.manifest, entry: nextPath }
+        : currentProject.manifest,
+    }
+    projectRef.current = nextProject
+    setProject(nextProject)
+    if (activeFile === path) setActiveFile(nextPath)
+    setSaved(false)
+    setMessage(`Renamed ${path} to ${nextPath}${renamedFiles.changedReferences ? ` · updated ${renamedFiles.changedReferences} reference${renamedFiles.changedReferences === 1 ? '' : 's'}` : ''}`)
+    void applyCode()
   }
 
   const createProject = (type: 'canvas2d' | 'html') => {
@@ -737,28 +827,34 @@ function App() {
     })}>{collapsedFolders.has(node.path) ? <ChevronRight size={13} /> : <ChevronDown size={13} />}<Folder size={14} /><span>{node.name}</span></button>
     {!collapsedFolders.has(node.path) && renderTree(node.children, depth + 1)}
   </div> : <div className={`file-row ${activeFile === node.path ? 'selected' : ''}`} key={node.path} style={{ paddingLeft: 15 + depth * 13 }}>
+    <button className="file-remove" disabled={project.manifest.entry === node.path} onClick={(event) => event.stopPropagation()} onDoubleClick={(event) => { event.preventDefault(); event.stopPropagation(); removeFile(node.path) }} title={project.manifest.entry === node.path ? 'Entry file cannot be removed' : 'Double-click to remove'} aria-label={project.manifest.entry === node.path ? 'Entry file cannot be removed' : `Double-click to remove ${node.path}`}><Trash2 size={12} /></button>
     <button className="file-select" onClick={() => { setActiveFile(node.path); setSelectedCurveId(null); setWorkspaceMode('code') }}><FileCode2 size={14} /><span>{node.name}</span></button>
-    <button className={`entry-button ${project.manifest.entry === node.path ? 'is-entry' : ''}`} disabled={!isProjectEntry(node.path, project.manifest.projectType)} onClick={() => {
-      if (projectRef.current.manifest.entry === node.path) return
-      const nextProject = { ...projectRef.current, manifest: { ...projectRef.current.manifest, entry: node.path } }
-      projectRef.current = nextProject
-      setProject(nextProject)
-      setActiveFile(node.path)
-      setSaved(false)
-      setMessage(`Entry file set to ${node.path}`)
-      void applyCode()
-    }} title={project.manifest.entry === node.path ? 'Entry file' : 'Set as entry file'}><Circle size={9} fill={project.manifest.entry === node.path ? 'currentColor' : 'none'} /></button>
-    {project.manifest.entry !== node.path && <button className="file-remove" onClick={() => removeFile(node.path)} title={`Remove ${node.path}`} aria-label={`Remove ${node.path}`}><Trash2 size={12} /></button>}
+    <div className="file-actions">
+      <button className="file-rename" onClick={() => renameFile(node.path)} title={`Rename ${node.path}`} aria-label={`Rename ${node.path}`}><Pencil size={12} /></button>
+      <button className={`entry-button ${project.manifest.entry === node.path ? 'is-entry' : ''}`} disabled={!isProjectEntry(node.path, project.manifest.projectType)} onClick={() => {
+        if (projectRef.current.manifest.entry === node.path) return
+        const nextProject = { ...projectRef.current, manifest: { ...projectRef.current.manifest, entry: node.path } }
+        projectRef.current = nextProject
+        setProject(nextProject)
+        setActiveFile(node.path)
+        setSaved(false)
+        setMessage(`Entry file set to ${node.path}`)
+        void applyCode()
+      }} title={project.manifest.entry === node.path ? 'Entry file' : 'Set as entry file'}><Circle size={9} fill={project.manifest.entry === node.path ? 'currentColor' : 'none'} /></button>
+    </div>
   </div>)
 
   return (
     <main className="workbench" data-theme={theme}>
       <header className="topbar">
-        <div className="brand"><div className="brand-mark"><Waves size={16} /></div><span>MOTIONWORKBENCH</span><span className="brand-divider">/</span><span className="project-name">{project.manifest.name}</span>{!saved && <span className="dirty-mark" title="Unsaved changes" />}</div>
+        <div className="top-left">
+          <div className="project-actions">
+            <button className="tool-button" onClick={() => setNewProjectOpen(true)} title="Create a project"><FolderPlus size={15} /><span>New</span></button>
+            <button className="tool-button" onClick={openProject} title="Open project folder"><FolderOpen size={15} /><span>Open</span></button>
+            <button className="tool-button" onClick={() => void saveProject()} title="Save project folder"><Save size={15} /><span>Save</span></button>
+          </div>
+        </div>
         <div className="top-actions">
-          <button className="tool-button" onClick={() => setNewProjectOpen(true)} title="Create a project"><FolderPlus size={15} /><span>New</span></button>
-          <button className="tool-button" onClick={openProject} title="Open project folder"><FolderOpen size={15} /><span>Open</span></button>
-          <button className="tool-button" onClick={() => void saveProject()} title="Save project folder"><Save size={15} /><span>Save</span></button>
           <button className="icon-button" onClick={() => importInputRef.current?.click()} title="Import portable project"><Upload size={15} /></button>
           <button className="icon-button" onClick={() => exportProject()} title="Export portable project"><Download size={15} /></button>
           <input ref={importInputRef} className="visually-hidden" type="file" accept=".json,.motionworkbench.json,application/json" onChange={importProject} />

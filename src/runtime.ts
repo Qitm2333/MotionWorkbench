@@ -2,6 +2,7 @@ import { build, initialize } from 'esbuild-wasm'
 import wasmUrl from 'esbuild-wasm/esbuild.wasm?url'
 import { normalizeProjectPath, sampleCurveValue } from './project'
 import type { CurveResource, Project } from './project'
+import { opaqueOriginHistoryCompatibilityScript } from './historyCompatibility'
 
 let initialized: Promise<void> | undefined
 
@@ -281,6 +282,14 @@ export function startHtmlPreview(frame: HTMLIFrameElement, project: Project, onP
   if (html === undefined) throw new Error(`Entry file not found: ${entryPath}`)
   const entryDirectory = entryPath.split('/').slice(0, -1).join('/')
   const linkedStyles: string[] = []
+  html = html.replace(/<script\b([^>]*?)\bsrc\s*=\s*(["'])(.*?)\2([^>]*)>\s*<\/script>/gi, (tag, before: string, _quote: string, src: string, after: string) => {
+    if (/^(?:[a-z]+:|\/\/|\/|#|data:)/i.test(src)) return tag
+    const relative = src.split(/[?#]/, 1)[0]
+    const path = normalizeAssetPath(`${entryDirectory}/${relative}`)
+    const script = project.files[path]
+    if (script === undefined) throw new Error(`Script not found: ${src} (resolved to ${path})`)
+    return `<script${before}${after}>${script.replace(/<\/script/gi, '<\\/script')}</script>`
+  })
   html = html.replace(/<link\b([^>]*?)\bhref\s*=\s*(["'])(.*?)\2([^>]*)>/gi, (tag, before: string, _quote: string, href: string, after: string) => {
     if (!/\brel\s*=\s*(["'])?stylesheet\1?/i.test(`${before} ${after}`)) return tag
     if (/^(?:[a-z]+:|\/\/|\/|#)/i.test(href)) return tag
@@ -292,6 +301,7 @@ export function startHtmlPreview(frame: HTMLIFrameElement, project: Project, onP
     return ''
   })
   const bridgeScript = `<script>
+${opaqueOriginHistoryCompatibilityScript};
 (() => {
   addEventListener('error', (event) => parent.postMessage({ type: 'workbench-error', message: event.message || 'Page script failed' }, '*'))
   addEventListener('unhandledrejection', (event) => parent.postMessage({ type: 'workbench-error', message: String(event.reason || 'Unhandled page promise rejection') }, '*'))

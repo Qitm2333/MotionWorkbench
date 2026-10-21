@@ -305,9 +305,6 @@ export function validateProject(value: unknown): Project {
 }
 
 export async function readProjectDirectory(handle: DirectoryHandle): Promise<Project> {
-  const manifestFile = await handle.getFileHandle('project.json')
-  const manifest = JSON.parse(await (await manifestFile.getFile()).text()) as unknown
-
   const files: Record<string, string> = {}
   const walk = async (directory: FileSystemDirectoryHandle, parent = '') => {
     for await (const [name, entry] of directory.entries()) {
@@ -315,6 +312,22 @@ export async function readProjectDirectory(handle: DirectoryHandle): Promise<Pro
       if ((entry as FileSystemDirectoryHandle).kind === 'directory' && !['.git', 'node_modules', 'dist'].includes(name)) await walk(entry as FileSystemDirectoryHandle, path)
       else if (/\.(?:[cm]?[jt]sx?|html?|css)$/i.test(name)) files[path] = await (await (entry as FileSystemFileHandle).getFile()).text()
     }
+  }
+
+  let manifest: unknown
+  try {
+    const manifestFile = await handle.getFileHandle('project.json')
+    manifest = JSON.parse(await (await manifestFile.getFile()).text()) as unknown
+  } catch (error) {
+    if (!(error instanceof DOMException && error.name === 'NotFoundError')) throw error
+    await walk(handle)
+    const htmlEntries = Object.keys(files).filter((path) => /\.html?$/i.test(path)).sort()
+    if (!htmlEntries.length) throw new Error('This folder is not a MotionWorkbench project: project.json or an HTML entry file is required')
+    const entry = htmlEntries.find((path) => path.toLowerCase() === 'index.html') ?? htmlEntries[0]
+    return validateProject({
+      manifest: { formatVersion: 1, name: handle.name || 'Imported web project', entry, projectType: 'html', renderer: { type: 'html' } },
+      files,
+    })
   }
   await walk(handle)
   return validateProject({ manifest, files })
@@ -380,5 +393,5 @@ export function isProjectEntry(path: string, type: ProjectManifest['projectType'
 }
 
 export function isAllowedProjectFile(path: string, type: ProjectManifest['projectType']) {
-  return type === 'html' ? /\.(?:html?|css)$/i.test(path) : /\.(?:[cm]?[jt]sx?)$/i.test(path)
+  return type === 'html' ? /\.(?:html?|css|[cm]?js)$/i.test(path) : /\.(?:[cm]?[jt]sx?)$/i.test(path)
 }

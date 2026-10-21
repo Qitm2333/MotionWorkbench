@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { createCurveFromPreset, curvePresets, sampleCurveValue, starterProject, starterHtmlProject, validateProject, writeProjectDirectory } from '../src/project.ts'
+import { createCurveFromPreset, curvePresets, readProjectDirectory, sampleCurveValue, starterProject, starterHtmlProject, validateProject, writeProjectDirectory } from '../src/project.ts'
 import type { DirectoryHandle } from '../src/project.ts'
 
 class MemoryFile {
@@ -18,7 +18,9 @@ class MemoryFile {
 
 class MemoryDirectory {
   readonly kind = 'directory'
+  readonly name: string
   readonly children = new Map<string, MemoryDirectory | MemoryFile>()
+  constructor(name = 'memory-project') { this.name = name }
   async *entries() { yield* this.children.entries() }
   async getFileHandle(name: string, options?: { create?: boolean }) {
     let file = this.children.get(name)
@@ -112,4 +114,20 @@ test('saving removes only stale sources listed in the previous manifest', async 
   assert.equal(root.children.has('notes.css'), true)
   const writtenManifest = JSON.parse((root.children.get('project.json') as MemoryFile).contents)
   assert.deepEqual(writtenManifest.sourceFiles, ['index.html'])
+})
+
+test('opening a plain HTML folder creates a compatible project manifest', async () => {
+  const root = new MemoryDirectory('catalog-repro')
+  root.children.set('index.html', new MemoryFile('<link rel="stylesheet" href="./style.css"><script defer src="./src/main.js"></script>'))
+  root.children.set('style.css', new MemoryFile('body { color: red; }'))
+  const src = new MemoryDirectory('src')
+  src.children.set('main.js', new MemoryFile('document.body.dataset.ready = "yes"'))
+  root.children.set('src', src)
+  root.children.set('README.md', new MemoryFile('ignored documentation'))
+
+  const project = await readProjectDirectory(root as unknown as DirectoryHandle)
+  assert.equal(project.manifest.projectType, 'html')
+  assert.equal(project.manifest.entry, 'index.html')
+  assert.equal(project.manifest.name, 'catalog-repro')
+  assert.deepEqual(Object.keys(project.files).sort(), ['index.html', 'src/main.js', 'style.css'])
 })
