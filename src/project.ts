@@ -4,7 +4,11 @@ export type ProjectManifest = {
   entry: string
   projectType: 'canvas2d' | 'html'
   renderer: { type: 'canvas2d'; width: number; height: number; background: string } | { type: 'html' }
+  parameterValues?: Record<string, number | boolean | string>
+  curves?: CurveResource[]
 }
+
+export type CurveResource = { id: string; name: string; type: 'cubic-bezier'; points: [number, number, number, number] }
 
 export type Project = {
   manifest: ProjectManifest
@@ -22,6 +26,7 @@ export const starterProject: Project = {
     entry: 'src/main.ts',
     projectType: 'canvas2d',
     renderer: { type: 'canvas2d', width: 960, height: 600, background: '#f2f1ed' },
+    curves: [{ id: 'ease-orbit', name: 'Orbit ease', type: 'cubic-bezier', points: [0.42, 0, 0.58, 1] }],
   },
   files: {
     'src/workbench.d.ts': `type WorkbenchParameterDefinition =
@@ -34,6 +39,10 @@ interface WorkbenchParameterApi {
   define<const T extends Record<string, WorkbenchParameterDefinition>>(definitions: T): { [K in keyof T]: T[K]['default'] }
 }
 
+interface WorkbenchCurveApi {
+  sample(id: string, progress: number): number
+}
+
 interface WorkbenchCanvasContext {
   canvas: HTMLCanvasElement
   ctx: CanvasRenderingContext2D
@@ -41,6 +50,7 @@ interface WorkbenchCanvasContext {
   height: number
   background: string
   params: WorkbenchParameterApi
+  curves: WorkbenchCurveApi
 }
 
 interface WorkbenchFrame {
@@ -60,7 +70,7 @@ export function create(context: WorkbenchCanvasContext) {
   return createOrbitScene(context)
 }
 `,
-    'src/orbit-scene.ts': `export function createOrbitScene({ ctx, width, height, params: parameterApi }: WorkbenchCanvasContext): WorkbenchScene {
+    'src/orbit-scene.ts': `export function createOrbitScene({ ctx, width, height, params: parameterApi, curves }: WorkbenchCanvasContext): WorkbenchScene {
   const params = parameterApi.define({
     particleCount: { type: 'number', label: 'Particle count', default: 90, min: 20, max: 180, step: 1, group: 'Particles' },
     orbitSpeed: { type: 'number', label: 'Orbit speed', default: 1, min: 0.2, max: 2.5, step: 0.1, group: 'Motion' },
@@ -93,8 +103,10 @@ export function create(context: WorkbenchCanvasContext) {
       }
       for (const particle of particles.slice(0, params.particleCount)) {
         const angle = particle.phase + time * params.orbitSpeed * (0.28 + particle.radius / 210)
-        const x = cx + Math.cos(angle) * particle.radius * (scale / 55)
-        const y = cy + Math.sin(angle * 1.13) * particle.radius * 0.56 * (scale / 55)
+        const easedPulse = curves.sample('ease-orbit', (Math.sin(time * 0.5) + 1) / 2)
+        const radius = particle.radius * (0.9 + easedPulse * 0.2)
+        const x = cx + Math.cos(angle) * radius * (scale / 55)
+        const y = cy + Math.sin(angle * 1.13) * radius * 0.56 * (scale / 55)
         ctx.beginPath()
         ctx.fillStyle = params.particleColor
         ctx.arc(x, y, particle.size * (scale / 160), 0, Math.PI * 2)

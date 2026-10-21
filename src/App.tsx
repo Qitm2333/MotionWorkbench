@@ -3,10 +3,10 @@ import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import Editor, { loader } from '@monaco-editor/react'
 import * as monaco from 'monaco-editor'
 import { ModuleResolutionKind, typescriptDefaults } from 'monaco-editor/languages/features/typescript/register.js'
-import { Activity, AlertCircle, Check, ChevronDown, ChevronRight, Circle, FileCode2, FilePlus2, Folder, FolderOpen, FolderPlus, Moon, Play, RotateCcw, Save, SlidersHorizontal, Square, Sun, Waves, X } from 'lucide-react'
+import { Activity, AlertCircle, Check, ChevronDown, ChevronRight, Circle, Copy, FileCode2, FilePlus2, Folder, FolderOpen, FolderPlus, Moon, Play, RotateCcw, Save, SlidersHorizontal, Square, Sun, Waves, X } from 'lucide-react'
 import './App.css'
 import { isAllowedProjectFile, isProjectEntry, isProjectSource, readProjectDirectory, starterHtmlProject, starterProject, writeProjectDirectory } from './project'
-import type { DirectoryHandle, Project } from './project'
+import type { CurveResource, DirectoryHandle, Project } from './project'
 import { startHtmlPreview, startPreview } from './runtime'
 import type { ParameterDefinition, ParameterValue, PreviewRuntime } from './runtime'
 
@@ -14,6 +14,21 @@ loader.config({ monaco })
 
 type Status = 'ready' | 'running' | 'paused' | 'error'
 type FileTreeNode = { name: string; path: string; children?: FileTreeNode[] }
+type ProjectDraft = { project: Project; activeFile: string; savedAt: number }
+const draftStorageKey = 'motion-workbench-draft-v1'
+
+function readDraft(): ProjectDraft | null {
+  try {
+    const value = JSON.parse(localStorage.getItem(draftStorageKey) ?? 'null') as ProjectDraft | null
+    if (!value || !value.project?.manifest || !value.project.files || typeof value.activeFile !== 'string' || !Number.isFinite(value.savedAt)) return null
+    const manifest = value.project.manifest
+    if (manifest.formatVersion !== 1 || !['canvas2d', 'html'].includes(manifest.projectType) || typeof manifest.entry !== 'string' || typeof manifest.name !== 'string') return null
+    if (!Object.keys(value.project.files).length || Object.values(value.project.files).some((contents) => typeof contents !== 'string')) return null
+    return value
+  } catch {
+    return null
+  }
+}
 
 function buildFileTree(paths: string[]): FileTreeNode[] {
   const root: FileTreeNode[] = []
@@ -49,10 +64,13 @@ function App() {
   const [message, setMessage] = useState('Ready to run')
   const [split, setSplit] = useState(50)
   const [consoleOpen, setConsoleOpen] = useState(true)
-  const [parametersOpen, setParametersOpen] = useState(false)
+  const [workspaceMode, setWorkspaceMode] = useState<'code' | 'curve' | 'parameters'>('code')
+  const [selectedCurveId, setSelectedCurveId] = useState<string | null>(null)
+  const [draggingCurveHandle, setDraggingCurveHandle] = useState<number | null>(null)
   const [parameters, setParameters] = useState<ParameterDefinition[]>([])
   const [parameterValues, setParameterValues] = useState<Record<string, ParameterValue>>({})
   const [newProjectOpen, setNewProjectOpen] = useState(false)
+  const [draftPrompt, setDraftPrompt] = useState<ProjectDraft | null>(() => readDraft())
   const [projectLoadId, setProjectLoadId] = useState(0)
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set())
   const [directoryName, setDirectoryName] = useState('Orbit study')
@@ -64,12 +82,25 @@ function App() {
   const directoryRef = useRef<DirectoryHandle | null>(null)
   const projectModelsRef = useRef(new Set<string>())
 
+  useEffect(() => {
+    if (saved) return
+    const timeout = window.setTimeout(() => {
+      try {
+        localStorage.setItem(draftStorageKey, JSON.stringify({ project, activeFile, savedAt: Date.now() } satisfies ProjectDraft))
+      } catch {
+        setMessage('Draft could not be stored in this browser')
+      }
+    }, 400)
+    return () => window.clearTimeout(timeout)
+  }, [project, activeFile, saved])
+
   useLayoutEffect(() => {
     projectRef.current = project
   }, [project])
 
   const sourceFiles = useMemo(() => Object.keys(project.files).filter(isProjectSource).sort(), [project.files])
   const fileTree = useMemo(() => buildFileTree(sourceFiles), [sourceFiles])
+  const selectedCurve = project.manifest.curves?.find((curve) => curve.id === selectedCurveId)
 
   useEffect(() => {
     typescriptDefaults.setEagerModelSync(true)
@@ -113,11 +144,11 @@ function App() {
         ? startHtmlPreview(iframeRef.current!, currentProject, (nextParameters, values) => {
           setParameters(nextParameters)
           setParameterValues(values)
-        })
+        }, currentProject.manifest.parameterValues)
         : await startPreview(canvasRef.current!, currentProject, (error) => {
           setStatus('error')
           setMessage(error.message)
-        })
+        }, currentProject.manifest.parameterValues)
       runtimeRef.current?.dispose()
       runtimeRef.current = runtime
       setParameters(runtime.parameters)
@@ -152,6 +183,8 @@ function App() {
       directoryRef.current = handle
       setDirectoryName(handle.name)
       setProject(opened)
+      setSelectedCurveId(null)
+      setWorkspaceMode('code')
       setProjectLoadId((id) => id + 1)
       setActiveFile(opened.manifest.entry)
       setSaved(true)
@@ -180,6 +213,8 @@ function App() {
         setDirectoryName(handle.name)
       }
       await writeProjectDirectory(handle, project)
+      localStorage.removeItem(draftStorageKey)
+      setDraftPrompt(null)
       setSaved(true)
       setMessage(`Saved ${handle.name}/project.json`)
     } catch (error) {
@@ -201,6 +236,8 @@ function App() {
     }
     setProject((current) => ({ ...current, files: { ...current.files, [path]: 'export {}\n' } }))
     setActiveFile(path)
+    setSelectedCurveId(null)
+    setWorkspaceMode('code')
     setSaved(false)
   }
 
@@ -217,12 +254,100 @@ function App() {
   const updateParameter = (id: string, value: ParameterValue) => {
     const runtime = runtimeRef.current
     runtime?.setParameter(id, value)
-    setParameterValues(runtime?.getParameterValues() ?? {})
+    const values = runtime?.getParameterValues() ?? {}
+    setParameterValues(values)
+    setProject((current) => ({ ...current, manifest: { ...current.manifest, parameterValues: values } }))
+    setSaved(false)
   }
 
   const resetParameters = () => {
     runtimeRef.current?.resetParameters()
-    setParameterValues(runtimeRef.current?.getParameterValues() ?? {})
+    const values = runtimeRef.current?.getParameterValues() ?? {}
+    setParameterValues(values)
+    setProject((current) => ({ ...current, manifest: { ...current.manifest, parameterValues: values } }))
+    setSaved(false)
+  }
+
+  const updateCurvePoint = (curveId: string, pointIndex: number, value: number) => {
+    const currentCurve = projectRef.current.manifest.curves?.find((curve) => curve.id === curveId)
+    if (currentCurve) {
+      const points = currentCurve.points.map((point, index) => index === pointIndex ? value : point) as CurveResource['points']
+      setCurvePoints(curveId, points)
+    }
+  }
+
+  const setCurvePoints = (curveId: string, points: CurveResource['points']) => {
+    runtimeRef.current?.setCurve?.(curveId, points)
+    setProject((current) => ({
+      ...current,
+      manifest: {
+        ...current.manifest,
+        curves: (current.manifest.curves ?? []).map((curve) => curve.id !== curveId ? curve : {
+          ...curve,
+          points,
+        }),
+      },
+    }))
+    setSaved(false)
+  }
+
+  const updateCurveFromPointer = (event: ReactPointerEvent<SVGSVGElement>) => {
+    if (draggingCurveHandle === null || !selectedCurve) return
+    const svg = event.currentTarget
+    const transform = svg.getScreenCTM()
+    if (!transform) return
+    const pointer = svg.createSVGPoint()
+    pointer.x = event.clientX
+    pointer.y = event.clientY
+    const point = pointer.matrixTransform(transform.inverse())
+    const x = Math.max(0, Math.min(1, (point.x - 32) / 256))
+    const y = Math.max(-2, Math.min(3, (216 - point.y) / 192))
+    const points = [...selectedCurve.points] as CurveResource['points']
+    points[draggingCurveHandle * 2] = x
+    points[draggingCurveHandle * 2 + 1] = y
+    setCurvePoints(selectedCurve.id, points)
+  }
+
+  const addCurve = () => {
+    const id = `curve-${crypto.randomUUID().slice(0, 8)}`
+    const curve: CurveResource = { id, name: `Curve ${(project.manifest.curves?.length ?? 0) + 1}`, type: 'cubic-bezier', points: [0.25, 0.1, 0.25, 1] }
+    setProject((current) => ({ ...current, manifest: { ...current.manifest, curves: [...(current.manifest.curves ?? []), curve] } }))
+    setSelectedCurveId(id)
+    setWorkspaceMode('curve')
+    setSaved(false)
+  }
+
+  const renameCurve = (curveId: string, name: string) => {
+    setProject((current) => ({ ...current, manifest: { ...current.manifest, curves: (current.manifest.curves ?? []).map((curve) => curve.id === curveId ? { ...curve, name } : curve) } }))
+    setSaved(false)
+  }
+
+  const duplicateCurve = (curveId: string) => {
+    const source = project.manifest.curves?.find((curve) => curve.id === curveId)
+    if (!source) return
+    const copy: CurveResource = { ...source, id: `curve-${crypto.randomUUID().slice(0, 8)}`, name: `${source.name} copy`, points: [...source.points] }
+    setProject((current) => ({ ...current, manifest: { ...current.manifest, curves: [...(current.manifest.curves ?? []), copy] } }))
+    setSelectedCurveId(copy.id)
+    setWorkspaceMode('curve')
+    setSaved(false)
+  }
+
+  const recoverDraft = () => {
+    if (!draftPrompt) return
+    runtimeRef.current?.dispose()
+    runtimeRef.current = null
+    setProject(draftPrompt.project)
+    setActiveFile(draftPrompt.project.files[draftPrompt.activeFile] === undefined ? draftPrompt.project.manifest.entry : draftPrompt.activeFile)
+    setDirectoryName(draftPrompt.project.manifest.name)
+    setSaved(false)
+    setProjectLoadId((id) => id + 1)
+    setDraftPrompt(null)
+    setMessage('Recovered unsaved draft')
+  }
+
+  const discardDraft = () => {
+    localStorage.removeItem(draftStorageKey)
+    setDraftPrompt(null)
   }
 
   const toggleRuntime = () => {
@@ -276,6 +401,8 @@ function App() {
     setParameterValues({})
     const nextProject = type === 'html' ? starterHtmlProject : starterProject
     setProject(nextProject)
+    setSelectedCurveId(null)
+    setWorkspaceMode('code')
     setProjectLoadId((id) => id + 1)
     setActiveFile(nextProject.manifest.entry)
     setDirectoryName(nextProject.manifest.name)
@@ -308,7 +435,7 @@ function App() {
     })}>{collapsedFolders.has(node.path) ? <ChevronRight size={13} /> : <ChevronDown size={13} />}<Folder size={14} /><span>{node.name}</span></button>
     {!collapsedFolders.has(node.path) && renderTree(node.children, depth + 1)}
   </div> : <div className={`file-row ${activeFile === node.path ? 'selected' : ''}`} key={node.path} style={{ paddingLeft: 15 + depth * 13 }}>
-    <button className="file-select" onClick={() => setActiveFile(node.path)}><FileCode2 size={14} /><span>{node.name}</span></button>
+    <button className="file-select" onClick={() => { setActiveFile(node.path); setSelectedCurveId(null); setWorkspaceMode('code') }}><FileCode2 size={14} /><span>{node.name}</span></button>
     <button className={`entry-button ${project.manifest.entry === node.path ? 'is-entry' : ''}`} disabled={!isProjectEntry(node.path, project.manifest.projectType)} onClick={() => {
       setProject((current) => ({ ...current, manifest: { ...current.manifest, entry: node.path } }))
       setActiveFile(node.path)
@@ -339,24 +466,55 @@ function App() {
           <div className="file-list">
             {renderTree(fileTree)}
           </div>
-          {parametersOpen && <section className="parameters-panel" aria-label="Project parameters">
-            <div className="parameters-heading"><span>PARAMETERS</span><button className="icon-button" onClick={resetParameters} disabled={!parameters.length} title="Restore parameter defaults"><RotateCcw size={13} /></button></div>
-            {parameters.length ? parameters.map((parameter) => <label className="parameter-control" key={parameter.id}>
-              <span className="parameter-label">{parameter.label}</span>
-              {parameter.type === 'number' && <div className="parameter-number">
-                <input type="range" min={parameter.min} max={parameter.max} step={parameter.step ?? 'any'} value={Number(parameterValues[parameter.id] ?? parameter.default)} onChange={(event) => updateParameter(parameter.id, Number(event.target.value))} aria-label={parameter.label} />
-                <input type="number" min={parameter.min} max={parameter.max} step={parameter.step ?? 'any'} value={Number(parameterValues[parameter.id] ?? parameter.default)} onChange={(event) => updateParameter(parameter.id, Number(event.target.value))} aria-label={`${parameter.label} value`} />
-              </div>}
-              {parameter.type === 'boolean' && <input className="parameter-checkbox" type="checkbox" checked={Boolean(parameterValues[parameter.id] ?? parameter.default)} onChange={(event) => updateParameter(parameter.id, event.target.checked)} />}
-              {parameter.type === 'color' && <input className="parameter-color" type="color" value={String(parameterValues[parameter.id] ?? parameter.default)} onChange={(event) => updateParameter(parameter.id, event.target.value)} aria-label={parameter.label} />}
-              {parameter.type === 'select' && <select value={String(parameterValues[parameter.id] ?? parameter.default)} onChange={(event) => updateParameter(parameter.id, event.target.value)} aria-label={parameter.label}>{parameter.options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>}
-            </label>) : <div className="parameters-empty">No parameters declared in this project.</div>}
-          </section>}
-          <div className="explorer-foot"><button className={`parameters-toggle ${parametersOpen ? 'active' : ''}`} onClick={() => setParametersOpen((open) => !open)} aria-expanded={parametersOpen}><SlidersHorizontal size={13} /><span>Parameters</span><span className="parameter-count">{parameters.length}</span></button><span className="file-count">{sourceFiles.length.toString().padStart(2, '0')} files</span></div>
+          <section className="curves-list" aria-label="Project curves">
+            <div className="curves-list-heading"><span>CURVES</span><button className="icon-button" onClick={addCurve} title="New curve"><FilePlus2 size={14} /></button></div>
+            {(project.manifest.curves ?? []).map((curve) => {
+              const [x1, y1, x2, y2] = curve.points
+              return <div className={`curve-row ${selectedCurveId === curve.id ? 'selected' : ''}`} key={curve.id}>
+                <button className="curve-row-select" onClick={() => { setSelectedCurveId(curve.id); setWorkspaceMode('curve') }} title={`Edit ${curve.name}`}>
+                  <svg viewBox="0 0 32 20" aria-hidden="true"><path d={`M1 19 C${1 + x1 * 30} ${19 - y1 * 18}, ${1 + x2 * 30} ${19 - y2 * 18}, 31 1`} /></svg>
+                  <span>{curve.name}</span>
+                </button>
+                <button className="icon-button curve-copy" onClick={() => duplicateCurve(curve.id)} title={`Duplicate ${curve.name}`}><Copy size={12} /></button>
+              </div>
+            })}
+            {!(project.manifest.curves?.length) && <div className="parameters-empty">No curves yet.</div>}
+          </section>
+          <div className="explorer-foot"><button className={`parameters-toggle ${workspaceMode === 'parameters' ? 'active' : ''}`} onClick={() => setWorkspaceMode((mode) => mode === 'parameters' ? 'code' : 'parameters')} aria-pressed={workspaceMode === 'parameters'}><SlidersHorizontal size={13} /><span>Parameters</span><span className="parameter-count">{parameters.length}</span></button><span className="file-count">{sourceFiles.length.toString().padStart(2, '0')} files</span></div>
         </aside>
 
         <section className="editor-area" style={{ gridTemplateColumns: `${split}fr 5px ${100 - split}fr` }}>
-          <div className="editor-panel">
+          {workspaceMode === 'parameters' ? <section className="parameter-editor">
+            <div className="panel-tabs"><div className="active-tab"><SlidersHorizontal size={13} />Parameters</div><div className="editor-actions"><button className="icon-button" onClick={resetParameters} disabled={!parameters.length} title="Restore parameter defaults"><RotateCcw size={13} /></button></div></div>
+            <div className="parameter-editor-content">
+              {parameters.length ? <div className="parameter-grid">{parameters.map((parameter) => <label className="parameter-card" key={parameter.id}>
+                <span className="parameter-label">{parameter.label}<small>{parameter.group ?? parameter.id}</small></span>
+                {parameter.type === 'number' && <div className="parameter-number"><input type="range" min={parameter.min} max={parameter.max} step={parameter.step ?? 'any'} value={Number(parameterValues[parameter.id] ?? parameter.default)} onChange={(event) => updateParameter(parameter.id, Number(event.target.value))} aria-label={parameter.label} /><input type="number" min={parameter.min} max={parameter.max} step={parameter.step ?? 'any'} value={Number(parameterValues[parameter.id] ?? parameter.default)} onChange={(event) => updateParameter(parameter.id, Number(event.target.value))} aria-label={`${parameter.label} value`} /></div>}
+                {parameter.type === 'boolean' && <input className="parameter-checkbox" type="checkbox" checked={Boolean(parameterValues[parameter.id] ?? parameter.default)} onChange={(event) => updateParameter(parameter.id, event.target.checked)} />}
+                {parameter.type === 'color' && <input className="parameter-color" type="color" value={String(parameterValues[parameter.id] ?? parameter.default)} onChange={(event) => updateParameter(parameter.id, event.target.value)} aria-label={parameter.label} />}
+                {parameter.type === 'select' && <select value={String(parameterValues[parameter.id] ?? parameter.default)} onChange={(event) => updateParameter(parameter.id, event.target.value)} aria-label={parameter.label}>{parameter.options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>}
+              </label>)}</div> : <div className="parameter-empty-state">No parameters declared in this project.</div>}
+            </div>
+          </section> : workspaceMode === 'curve' && selectedCurve ? <div className="curve-editor">
+            <div className="panel-tabs"><div className="active-tab"><Waves size={13} />{selectedCurve.name}<span className="curve-id">{selectedCurve.id}</span></div><div className="editor-actions"><span>CUBIC BEZIER</span></div></div>
+            <div className="curve-editor-content">
+              <div className="curve-editor-graph-wrap">
+                <svg className="curve-editor-graph" viewBox="0 0 320 240" onPointerMove={updateCurveFromPointer} onPointerUp={() => setDraggingCurveHandle(null)} onPointerCancel={() => setDraggingCurveHandle(null)} role="img" aria-label={`${selectedCurve.name} curve editor`}>
+                  <path className="curve-editor-grid" d="M32 24V216H288M32 120H288M160 24V216" />
+                  <path className="curve-editor-handle-line" d={`M32 216L${32 + selectedCurve.points[0] * 256} ${216 - selectedCurve.points[1] * 192}M288 24L${32 + selectedCurve.points[2] * 256} ${216 - selectedCurve.points[3] * 192}`} />
+                  <path className="curve-editor-line" d={`M32 216 C${32 + selectedCurve.points[0] * 256} ${216 - selectedCurve.points[1] * 192}, ${32 + selectedCurve.points[2] * 256} ${216 - selectedCurve.points[3] * 192}, 288 24`} />
+                  {[0, 1].map((handle) => <circle key={handle} className="curve-editor-handle" cx={32 + selectedCurve.points[handle * 2] * 256} cy={216 - selectedCurve.points[handle * 2 + 1] * 192} r="6" onPointerDown={(event) => { event.currentTarget.ownerSVGElement?.setPointerCapture(event.pointerId); setDraggingCurveHandle(handle) }} />)}
+                </svg>
+                <div className="curve-axis-labels"><span>START</span><span>PROGRESS</span><span>END</span></div>
+              </div>
+              <div className="curve-inspector">
+                <label className="curve-name-field">NAME<input value={selectedCurve.name} onChange={(event) => renameCurve(selectedCurve.id, event.target.value)} /></label>
+                <div className="curve-point-fields">{selectedCurve.points.map((point, index) => <label key={index}><span>{index < 2 ? 'P1' : 'P2'} · {index % 2 === 0 ? 'X' : 'Y'}</span><input type="number" min={index % 2 === 0 ? 0 : -2} max={index % 2 === 0 ? 1 : 3} step="0.01" value={point} onChange={(event) => updateCurvePoint(selectedCurve.id, index, Math.max(index % 2 === 0 ? 0 : -2, Math.min(index % 2 === 0 ? 1 : 3, Number(event.target.value))))} /></label>)}</div>
+                <div className="curve-reference"><span>REFERENCE ID</span><code>{selectedCurve.id}</code></div>
+                <button className="tool-button curve-duplicate-action" onClick={() => duplicateCurve(selectedCurve.id)}><Copy size={13} />Duplicate curve</button>
+              </div>
+            </div>
+          </div> : <div className="editor-panel">
             <div className="panel-tabs"><div className="active-tab"><FileCode2 size={13} />{activeFile}<span className="tab-dirty">{saved ? '' : '●'}</span></div><div className="editor-actions"><span>{editorLanguage === 'typescript' ? 'TypeScript' : editorLanguage.toUpperCase()}</span><span>UTF-8</span></div></div>
             <div className="editor-body">
               <Editor
@@ -369,7 +527,7 @@ function App() {
                 options={{ minimap: { enabled: false }, fontSize: 13, lineHeight: 21, fontFamily: 'Consolas, monospace', scrollBeyondLastLine: false, padding: { top: 16 }, automaticLayout: true, tabSize: 2, wordWrap: 'off', renderLineHighlight: 'all', overviewRulerBorder: false }}
               />
             </div>
-          </div>
+          </div>}
           <div className="splitter" onPointerDown={dragSplit} role="separator" aria-label="Resize editor and preview" />
           <div className="preview-column">
             <div className="preview-panel">
@@ -390,6 +548,7 @@ function App() {
 
       <footer className="statusbar"><div><span className={`status-dot ${status}`} />{status === 'running' ? 'Running' : status === 'paused' ? 'Paused' : status === 'error' ? 'Build failed' : 'Idle'}<span className="status-divider" />{activeFile}</div><div><span>{project.manifest.projectType === 'html' ? 'HTML / CSS' : 'Canvas2D'}</span><span className="status-divider" /><span>Project format v1</span></div></footer>
       {newProjectOpen && <div className="dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setNewProjectOpen(false) }}><section className="new-project-dialog" role="dialog" aria-modal="true" aria-labelledby="new-project-title"><div className="dialog-heading"><div><span className="dialog-eyebrow">START A STUDY</span><h2 id="new-project-title">New project</h2></div><button className="icon-button" onClick={() => setNewProjectOpen(false)} title="Close"><X size={16} /></button></div><div className="project-choices"><button className="project-choice" onClick={() => createProject('canvas2d')}><span className="choice-icon canvas-choice"><Activity size={18} /></span><span><strong>Canvas2D</strong><small>TypeScript scene with a frame loop</small></span><ChevronRight size={16} /></button><button className="project-choice" onClick={() => createProject('html')}><span className="choice-icon html-choice"><FileCode2 size={18} /></span><span><strong>HTML + CSS</strong><small>A page for small visual experiments</small></span><ChevronRight size={16} /></button></div></section></div>}
+      {draftPrompt && <div className="dialog-backdrop"><section className="new-project-dialog draft-dialog" role="dialog" aria-modal="true" aria-labelledby="draft-title"><div className="dialog-heading"><div><span className="dialog-eyebrow">UNSAVED WORK</span><h2 id="draft-title">Recover this draft?</h2></div></div><p>{draftPrompt.project.manifest.name} · {new Date(draftPrompt.savedAt).toLocaleString()}</p><div className="draft-actions"><button className="tool-button" onClick={discardDraft}>Discard</button><button className="tool-button primary-action" onClick={recoverDraft}>Recover draft</button></div></section></div>}
     </main>
   )
 }

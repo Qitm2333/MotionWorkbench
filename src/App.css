@@ -46,6 +46,18 @@
 .parameter-count { min-width: 17px; padding: 2px 4px; border-radius: 3px; background: #e4e9e4; text-align: center; }
 .file-count { white-space: nowrap; }
 .parameters-panel { max-height: 45%; overflow: auto; border-top: 1px solid #dfe2de; }
+.curves-list { flex: 0 1 32%; min-height: 88px; max-height: 38%; overflow: auto; border-top: 1px solid #dfe2de; }
+.curves-list-heading { position: sticky; top: 0; z-index: 1; height: 30px; display: flex; align-items: center; justify-content: space-between; padding: 0 9px 0 12px; background: #f1f3f0; color: #7c8580; font-size: 9px; font-weight: 700; letter-spacing: .06em; }
+.curves-list-heading .icon-button { width: 23px; height: 23px; }
+.curve-row { height: 28px; display: flex; align-items: center; padding: 0 6px 0 9px; }
+.curve-row.selected { background: #e2e9e3; }
+.curve-row-select { flex: 1; min-width: 0; height: 26px; display: flex; align-items: center; gap: 8px; padding: 0 4px; border: 0; background: transparent; color: #5f6963; font-size: 10px; text-align: left; cursor: pointer; }
+.curve-row-select:hover { color: #2f6647; }
+.curve-row-select svg { width: 28px; height: 18px; flex: 0 0 28px; overflow: visible; }
+.curve-row-select svg path { fill: none; stroke: #0e639c; stroke-width: 1.7; }
+.curve-row-select span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.curve-copy { width: 22px; height: 22px; opacity: 0; }
+.curve-row:hover .curve-copy, .curve-row.selected .curve-copy { opacity: 1; }
 .parameters-heading { position: sticky; top: 0; z-index: 1; height: 32px; display: flex; align-items: center; justify-content: space-between; padding: 0 9px 0 12px; background: #f1f3f0; color: #7c8580; font-size: 9px; font-weight: 700; letter-spacing: .06em; }
 .parameters-heading .icon-button { width: 23px; height: 23px; }
 .parameters-heading .icon-button:disabled { opacity: .4; cursor: default; }
@@ -60,6 +72,36 @@
 .tiny-label { font: 700 9px 'Segoe UI', Arial, sans-serif; letter-spacing: .06em; }
 .editor-area { display: grid; min-width: 0; min-height: 0; overflow: hidden; }
 .editor-panel, .preview-panel { min-width: 0; min-height: 0; display: flex; flex-direction: column; background: #202625; }
+.curve-editor { min-width: 0; min-height: 0; display: flex; flex-direction: column; background: #202625; }
+.parameter-editor { min-width: 0; min-height: 0; display: flex; flex-direction: column; background: #202625; }
+.parameter-editor .panel-tabs { display: flex; }
+.parameter-editor-content { min-height: 0; flex: 1; overflow: auto; padding: 24px; background: #202625; }
+.parameter-grid { max-width: 900px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); align-content: start; gap: 12px; }
+.parameter-card { min-height: 100px; display: grid; align-content: space-between; gap: 18px; padding: 14px; border: 1px solid #3b4440; border-radius: 4px; background: #252c29; color: #d7dfda; }
+.parameter-label { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.parameter-label small { color: #8b9690; font: 9px var(--mono); }
+.parameter-card .parameter-number { grid-template-columns: minmax(0, 1fr) 72px; }
+.parameter-card .parameter-number input[type="number"], .parameter-card select { color: #e2e8e4; background: #1e2421; border-color: #454f49; }
+.parameter-card .parameter-color { width: 54px; height: 32px; }
+.parameter-card .parameter-checkbox { width: 18px; height: 18px; }
+.parameter-empty-state { max-width: 900px; margin: 0 auto; padding: 18px 0; color: #8e9992; font-size: 12px; }
+.curve-editor .panel-tabs { display: flex; }
+.curve-id { margin-left: 8px; color: #88938c; font: 9px var(--mono); }
+.curve-editor-content { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, 240px); align-items: center; gap: clamp(16px, 4vw, 56px); padding: 28px clamp(18px, 4vw, 52px); background: #202625; }
+.curve-editor-graph-wrap { min-width: 0; max-width: 700px; width: 100%; justify-self: center; }
+.curve-editor-graph { display: block; width: 100%; height: auto; overflow: visible; touch-action: none; user-select: none; }
+.curve-editor-grid { fill: none; stroke: #59635e; stroke-width: 1; stroke-dasharray: 3 4; }
+.curve-editor-handle-line { fill: none; stroke: #6d7771; stroke-width: 1; stroke-dasharray: 3 3; }
+.curve-editor-line { fill: none; stroke: #75beff; stroke-width: 3; }
+.curve-editor-handle { fill: #252526; stroke: #75beff; stroke-width: 2; cursor: grab; }
+.curve-editor-handle:active { cursor: grabbing; }
+.curve-axis-labels { display: flex; justify-content: space-between; color: #858f89; font: 9px var(--mono); }
+.curve-inspector { display: grid; align-content: start; gap: 18px; }
+.curve-name-field, .curve-point-fields label, .curve-reference { display: grid; gap: 6px; color: #8c9790; font: 9px var(--mono); }
+.curve-name-field input, .curve-point-fields input { width: 100%; min-width: 0; height: 30px; padding: 4px 7px; color: #e2e8e4; background: #292f2c; border: 1px solid #454f49; border-radius: 3px; font: 12px var(--mono); }
+.curve-point-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.curve-reference code { color: #bbc5bf; overflow-wrap: anywhere; }
+.curve-duplicate-action { justify-self: start; color: #dce4de; border-color: #454f49; }
 .panel-tabs { height: 36px; flex: 0 0 36px; justify-content: space-between; background: #282e2c; border-bottom: 1px solid #343c39; }
 .active-tab { height: 36px; gap: 7px; padding: 0 13px; border-top: 2px solid #73a784; background: #202625; color: #dce4de; font: 11px var(--mono); }
 .active-tab svg { color: #85ad91; }
@@ -108,6 +150,9 @@
 .dialog-eyebrow { color: #77827b; font-size: 9px; font-weight: 700; letter-spacing: .08em; }
 .dialog-heading h2 { margin: 3px 0 0; color: #29352e; font-size: 19px; font-weight: 600; }
 .project-choices { display: grid; gap: 8px; }
+.draft-dialog > p { margin: 0 0 18px; color: #6f7773; font-size: 12px; }
+.draft-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.primary-action { color: #ffffff; background: #0e639c; border-color: #0e639c; }
 .project-choice { min-height: 68px; display: grid; grid-template-columns: 34px minmax(0, 1fr) 18px; align-items: center; gap: 11px; padding: 10px 12px; border: 1px solid #e0e5df; border-radius: 4px; background: #fff; text-align: left; cursor: pointer; }
 .project-choice:hover { border-color: #94b39c; background: #f5f8f4; }
 .choice-icon { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 4px; }
@@ -149,6 +194,11 @@
 .workbench[data-theme="dark"] .parameters-toggle.active { color: #75beff; }
 .workbench[data-theme="dark"] .parameter-count { background: #37373d; }
 .workbench[data-theme="dark"] .parameters-panel { border-color: #333333; }
+.workbench[data-theme="dark"] .curves-list { border-color: #333333; }
+.workbench[data-theme="dark"] .curves-list-heading { color: #bbbbbb; background: #252526; }
+.workbench[data-theme="dark"] .curve-row.selected { background: #37373d; }
+.workbench[data-theme="dark"] .curve-row-select { color: #cccccc; }
+.workbench[data-theme="dark"] .curve-row-select:hover { color: #75beff; }
 .workbench[data-theme="dark"] .parameters-heading { color: #bbbbbb; background: #252526; }
 .workbench[data-theme="dark"] .parameter-control { color: #cccccc; border-color: #333333; }
 .workbench[data-theme="dark"] .parameter-number input[type="number"],
@@ -156,6 +206,15 @@
 .workbench[data-theme="dark"] .parameter-color { color: #cccccc; background: #1e1e1e; border-color: #454545; }
 .workbench[data-theme="dark"] .parameters-empty { color: #9d9d9d; }
 .workbench[data-theme="dark"] .editor-panel { background: #1e1e1e; }
+.workbench[data-theme="dark"] .curve-editor,
+.workbench[data-theme="dark"] .curve-editor-content { background: #1e1e1e; }
+.workbench[data-theme="dark"] .parameter-editor,
+.workbench[data-theme="dark"] .parameter-editor-content { background: #1e1e1e; }
+.workbench[data-theme="dark"] .parameter-card { color: #cccccc; background: #252526; border-color: #3c3c3c; }
+.workbench[data-theme="dark"] .parameter-label small,
+.workbench[data-theme="dark"] .parameter-empty-state { color: #9d9d9d; }
+.workbench[data-theme="dark"] .parameter-card .parameter-number input[type="number"],
+.workbench[data-theme="dark"] .parameter-card select { color: #cccccc; background: #1e1e1e; border-color: #454545; }
 .workbench[data-theme="dark"] .panel-tabs { background: #252526; border-color: #333333; }
 .workbench[data-theme="dark"] .active-tab { color: #ffffff; background: #1e1e1e; border-top-color: #007acc; }
 .workbench[data-theme="dark"] .active-tab svg { color: #75beff; }
@@ -184,6 +243,7 @@
 .workbench[data-theme="dark"] .statusbar { color: #ffffff; background: #007acc; }
 .workbench[data-theme="dark"] .status-dot { background: #d6ecff; }
 .workbench[data-theme="dark"] .new-project-dialog { color: #cccccc; background: #252526; border-color: #454545; }
+.workbench[data-theme="dark"] .draft-dialog > p { color: #a0a0a0; }
 .workbench[data-theme="dark"] .dialog-eyebrow,
 .workbench[data-theme="dark"] .project-choice small { color: #9d9d9d; }
 .workbench[data-theme="dark"] .dialog-heading h2,
@@ -227,6 +287,11 @@
 .workbench[data-theme="light"] .parameters-toggle.active { color: #007acc; }
 .workbench[data-theme="light"] .parameter-count { background: #e8e8e8; }
 .workbench[data-theme="light"] .parameters-panel { border-color: #dddddd; }
+.workbench[data-theme="light"] .curves-list { border-color: #dddddd; }
+.workbench[data-theme="light"] .curves-list-heading { color: #666666; background: #f3f3f3; }
+.workbench[data-theme="light"] .curve-row.selected { background: #e4e6f1; }
+.workbench[data-theme="light"] .curve-row-select { color: #444444; }
+.workbench[data-theme="light"] .curve-row-select:hover { color: #007acc; }
 .workbench[data-theme="light"] .parameters-heading { color: #666666; background: #f3f3f3; }
 .workbench[data-theme="light"] .parameter-control { color: #444444; border-color: #e2e2e2; }
 .workbench[data-theme="light"] .parameter-number input[type="number"],
@@ -234,6 +299,27 @@
 .workbench[data-theme="light"] .parameter-color { color: #333333; background: #ffffff; border-color: #cccccc; }
 .workbench[data-theme="light"] .parameters-empty { color: #777777; }
 .workbench[data-theme="light"] .editor-panel { background: #ffffff; }
+.workbench[data-theme="light"] .curve-editor,
+.workbench[data-theme="light"] .curve-editor-content { color: #333333; background: #ffffff; }
+.workbench[data-theme="light"] .parameter-editor,
+.workbench[data-theme="light"] .parameter-editor-content { color: #333333; background: #ffffff; }
+.workbench[data-theme="light"] .parameter-card { color: #444444; background: #fafafa; border-color: #dddddd; }
+.workbench[data-theme="light"] .parameter-label small,
+.workbench[data-theme="light"] .parameter-empty-state { color: #777777; }
+.workbench[data-theme="light"] .parameter-card .parameter-number input[type="number"],
+.workbench[data-theme="light"] .parameter-card select { color: #333333; background: #ffffff; border-color: #cccccc; }
+.workbench[data-theme="light"] .curve-editor-grid { stroke: #c5cbc7; }
+.workbench[data-theme="light"] .curve-editor-handle-line { stroke: #9aa39d; }
+.workbench[data-theme="light"] .curve-editor-line { stroke: #007acc; }
+.workbench[data-theme="light"] .curve-editor-handle { fill: #ffffff; stroke: #007acc; }
+.workbench[data-theme="light"] .curve-axis-labels,
+.workbench[data-theme="light"] .curve-name-field,
+.workbench[data-theme="light"] .curve-point-fields label,
+.workbench[data-theme="light"] .curve-reference { color: #777777; }
+.workbench[data-theme="light"] .curve-name-field input,
+.workbench[data-theme="light"] .curve-point-fields input { color: #333333; background: #ffffff; border-color: #cccccc; }
+.workbench[data-theme="light"] .curve-reference code { color: #555555; }
+.workbench[data-theme="light"] .curve-duplicate-action { color: #444444; border-color: #cccccc; }
 .workbench[data-theme="light"] .panel-tabs { background: #f3f3f3; border-color: #dddddd; }
 .workbench[data-theme="light"] .active-tab { color: #333333; background: #ffffff; border-top-color: #007acc; }
 .workbench[data-theme="light"] .active-tab svg { color: #007acc; }
@@ -261,6 +347,7 @@
 .workbench[data-theme="light"] .statusbar { color: #ffffff; background: #007acc; }
 .workbench[data-theme="light"] .status-dot { background: #d6ecff; }
 .workbench[data-theme="light"] .new-project-dialog { color: #333333; background: #ffffff; border-color: #dddddd; }
+.workbench[data-theme="light"] .draft-dialog > p { color: #6f7773; }
 .workbench[data-theme="light"] .dialog-eyebrow,
 .workbench[data-theme="light"] .project-choice small { color: #777777; }
 .workbench[data-theme="light"] .dialog-heading h2,
@@ -275,4 +362,11 @@
   .workspace { grid-template-columns: 180px minmax(0, 1fr); }
   .editor-area { grid-template-columns: minmax(260px, 1fr) 5px minmax(260px, 1fr) !important; }
   .editor-actions span:first-child { display: none; }
+  .curve-editor-content { grid-template-columns: minmax(0, 1fr); align-content: center; gap: 14px; padding: 14px; }
+  .curve-editor-graph-wrap { max-width: 420px; }
+  .curve-editor-graph { max-height: 42vh; }
+  .curve-inspector { grid-template-columns: 1fr 1fr; align-items: end; gap: 10px; }
+  .curve-reference { display: none; }
+  .parameter-editor-content { padding: 14px; }
+  .parameter-grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
 }

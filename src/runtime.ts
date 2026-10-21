@@ -1,6 +1,6 @@
 import { build, initialize } from 'esbuild-wasm'
 import wasmUrl from 'esbuild-wasm/esbuild.wasm?url'
-import type { Project } from './project'
+import type { CurveResource, Project } from './project'
 
 let initialized: Promise<void> | undefined
 
@@ -63,6 +63,7 @@ export type PreviewRuntime = {
   getParameterValues: () => Record<string, ParameterValue>
   setParameter: (id: string, value: ParameterValue) => void
   resetParameters: () => void
+  setCurve?: (id: string, points: CurveResource['points']) => void
 }
 
 export type ParameterValue = number | boolean | string
@@ -102,7 +103,7 @@ function isHtmlParameterDefinition(value: unknown): value is ParameterDefinition
   return false
 }
 
-function isHtmlParameterValue(parameter: ParameterDefinition, value: unknown): value is ParameterValue {
+function isParameterValue(parameter: ParameterDefinition, value: unknown): value is ParameterValue {
   if (parameter.type === 'number') return typeof value === 'number' && Number.isFinite(value) && value >= parameter.min && value <= parameter.max
   if (parameter.type === 'boolean') return typeof value === 'boolean'
   if (parameter.type === 'color') return typeof value === 'string' && /^#[\da-f]{6}$/i.test(value)
@@ -116,7 +117,23 @@ type ParameterApi = {
   define: (definitions: Record<string, ParameterDeclaration>) => Record<string, ParameterValue>
 }
 
-export async function startPreview(canvas: HTMLCanvasElement, project: Project, onError: (error: Error) => void): Promise<PreviewRuntime> {
+type CurveApi = { sample: (id: string, progress: number) => number }
+
+function sampleBezier(points: CurveResource['points'], progress: number) {
+  const x = Math.max(0, Math.min(1, progress))
+  const [x1, y1, x2, y2] = points
+  const cubic = (t: number, a: number, b: number) => 3 * (1 - t) ** 2 * t * a + 3 * (1 - t) * t ** 2 * b + t ** 3
+  let low = 0
+  let high = 1
+  for (let iteration = 0; iteration < 20; iteration++) {
+    const middle = (low + high) / 2
+    if (cubic(middle, x1, x2) < x) low = middle
+    else high = middle
+  }
+  return cubic((low + high) / 2, y1, y2)
+}
+
+export async function startPreview(canvas: HTMLCanvasElement, project: Project, onError: (error: Error) => void, parameterOverrides: Record<string, ParameterValue> = {}): Promise<PreviewRuntime> {
   if (project.manifest.renderer.type !== 'canvas2d') throw new Error('Canvas preview requires a Canvas2D project')
   const output = await compileProject(project)
   const moduleUrl = URL.createObjectURL(new Blob([output], { type: 'text/javascript' }))
@@ -142,7 +159,20 @@ export async function startPreview(canvas: HTMLCanvasElement, project: Project, 
           if (!(parameter.id in parameterValues)) parameterValues[parameter.id] = parameter.default
         }
         parameters = nextParameters
+        for (const parameter of parameters) {
+          const value = parameterOverrides[parameter.id]
+          if (value !== undefined && isParameterValue(parameter, value)) parameterValues[parameter.id] = value
+        }
         return parameterValues
+      },
+    }
+    const curves = (project.manifest.curves ?? []).map((curve) => ({ ...curve, points: [...curve.points] as CurveResource['points'] }))
+    const curveApi: CurveApi = {
+      sample(id, progress) {
+        const curve = curves.find((candidate) => candidate.id === id)
+        if (!curve) throw new Error(`Unknown curve: ${id}`)
+        if (!Number.isFinite(progress)) throw new Error('Curve progress must be a finite number')
+        return sampleBezier(curve.points, progress)
       },
     }
     let animationFrame = 0
@@ -158,7 +188,7 @@ export async function startPreview(canvas: HTMLCanvasElement, project: Project, 
 
     const createInstance = () => {
       instance.current?.dispose?.()
-      instance.current = module.create!({ canvas, ctx: context, width, height, background, params: parameterApi })
+      instance.current = module.create!({ canvas, ctx: context, width, height, background, params: parameterApi, curves: curveApi })
       instance.current.render?.({ time: elapsed, delta: 0 })
     }
     createInstance()
@@ -211,6 +241,15 @@ export async function startPreview(canvas: HTMLCanvasElement, project: Project, 
         for (const parameter of parameters) parameterValues[parameter.id] = parameter.default
         instance.current?.render?.({ time: elapsed, delta: 0 })
       },
+      setCurve(id, points) {
+        if (points.length !== 4 || points.some((point) => !Number.isFinite(point)) || points[0] < 0 || points[0] > 1 || points[2] < 0 || points[2] > 1) {
+          throw new Error(`Invalid cubic-bezier control points for curve: ${id}`)
+        }
+        const curve = curves.find((candidate) => candidate.id === id)
+        if (curve) curve.points = points
+        else curves.push({ id, name: id, type: 'cubic-bezier', points })
+        instance.current?.render?.({ time: elapsed, delta: 0 })
+      },
     }
   } catch (error) {
     URL.revokeObjectURL(moduleUrl)
@@ -230,7 +269,7 @@ function normalizeAssetPath(path: string) {
   return parts.join('/')
 }
 
-export function startHtmlPreview(frame: HTMLIFrameElement, project: Project, onParameters: (parameters: ParameterDefinition[], values: Record<string, ParameterValue>) => void): PreviewRuntime {
+export function startHtmlPreview(frame: HTMLIFrameElement, project: Project, onParameters: (parameters: ParameterDefinition[], values: Record<string, ParameterValue>) => void, parameterOverrides: Record<string, ParameterValue> = {}): PreviewRuntime {
   if (project.manifest.projectType !== 'html') throw new Error('HTML preview requires an HTML/CSS project')
   const entryPath = normalizeAssetPath(project.manifest.entry)
   let html = project.files[entryPath]
@@ -296,10 +335,17 @@ export function startHtmlPreview(frame: HTMLIFrameElement, project: Project, onP
     const nextParameters = event.data.parameters as ParameterDefinition[]
     const nextValues = event.data.values
     if (!nextValues || typeof nextValues !== 'object' || Array.isArray(nextValues)) return
-    if (nextParameters.some((parameter) => !isHtmlParameterValue(parameter, nextValues[parameter.id]))) return
+    if (nextParameters.some((parameter) => !isParameterValue(parameter, nextValues[parameter.id]))) return
     parameters = nextParameters
     for (const id of Object.keys(parameterValues)) delete parameterValues[id]
     Object.assign(parameterValues, nextValues)
+    for (const parameter of parameters) {
+      const value = parameterOverrides[parameter.id]
+      if (value !== undefined && isParameterValue(parameter, value)) {
+        parameterValues[parameter.id] = value
+        frame.contentWindow?.postMessage({ type: 'workbench-set-parameter', id: parameter.id, value }, '*')
+      }
+    }
     onParameters(parameters, { ...parameterValues })
   }
   const syncState = () => {
@@ -320,7 +366,7 @@ export function startHtmlPreview(frame: HTMLIFrameElement, project: Project, onP
     setParameter(id, value) {
       const parameter = parameters.find((candidate) => candidate.id === id)
       if (!parameter) throw new Error(`Unknown parameter: ${id}`)
-      if (!isHtmlParameterValue(parameter, value)) throw new Error(`Invalid value for parameter: ${id}`)
+      if (!isParameterValue(parameter, value)) throw new Error(`Invalid value for parameter: ${id}`)
       parameterValues[id] = value
       frame.contentWindow?.postMessage({ type: 'workbench-set-parameter', id, value }, '*')
     },
