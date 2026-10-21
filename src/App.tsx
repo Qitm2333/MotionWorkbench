@@ -3,7 +3,7 @@ import type { DragEvent as ReactDragEvent, PointerEvent as ReactPointerEvent, Re
 import Editor, { loader } from '@monaco-editor/react'
 import * as monaco from 'monaco-editor'
 import { ModuleResolutionKind, typescriptDefaults } from 'monaco-editor/languages/features/typescript/register.js'
-import { Activity, AlertCircle, Check, ChevronDown, ChevronRight, Circle, Copy, Download, FileCode2, FilePlus2, Folder, FolderOpen, FolderPlus, Maximize2, Minimize2, Moon, Pencil, Play, RotateCcw, Save, SlidersHorizontal, Square, Sun, Trash2, Upload, Waves, X } from 'lucide-react'
+import { Activity, AlertCircle, Check, ChevronDown, ChevronRight, Circle, Copy, Download, FileCode2, FilePlus2, Folder, FolderOpen, FolderPlus, Maximize2, Minimize2, Minus, Moon, Pencil, Play, Plus, RotateCcw, Save, SlidersHorizontal, Square, Sun, Trash2, Upload, Waves, X } from 'lucide-react'
 import './App.css'
 import { createCurveFromPreset, curvePresets, isAllowedProjectFile, isProjectEntry, isProjectSource, readProjectDirectory, sampleCurveValue, starterHtmlProject, starterProject, validateProject, writeProjectDirectory } from './project'
 import type { CurveResource, DirectoryHandle, Project } from './project'
@@ -19,6 +19,19 @@ type CurvePoints = Extract<CurveResource, { type: 'cubic-bezier' }>['points']
 type PreviewDimensions = { width: number; height: number }
 const draftStorageKey = 'motion-workbench-draft-v1'
 const layoutStorageKey = 'motion-workbench-layout-v1'
+const editorFontSizeStorageKey = 'motion-workbench-editor-font-size-v1'
+const defaultEditorFontSize = 13
+const minEditorFontSize = 10
+const maxEditorFontSize = 32
+
+function readEditorFontSize() {
+  try {
+    const value = Number(localStorage.getItem(editorFontSizeStorageKey))
+    return Number.isInteger(value) && value >= minEditorFontSize && value <= maxEditorFontSize ? value : defaultEditorFontSize
+  } catch {
+    return defaultEditorFontSize
+  }
+}
 
 function readLayout() {
   try {
@@ -127,6 +140,7 @@ function App() {
   const [message, setMessage] = useState('Ready to run')
   const [split, setSplit] = useState(() => readLayout().split)
   const [consoleOpen, setConsoleOpen] = useState(() => readLayout().consoleOpen)
+  const [editorFontSize, setEditorFontSize] = useState(readEditorFontSize)
   const [workspaceMode, setWorkspaceMode] = useState<'code' | 'curve' | 'parameters'>('code')
   const [selectedCurveId, setSelectedCurveId] = useState<string | null>(null)
   const [draggingCurveHandle, setDraggingCurveHandle] = useState<number | null>(null)
@@ -179,6 +193,14 @@ function App() {
   useEffect(() => {
     localStorage.setItem(layoutStorageKey, JSON.stringify({ split, consoleOpen }))
   }, [split, consoleOpen])
+
+  useEffect(() => {
+    localStorage.setItem(editorFontSizeStorageKey, String(editorFontSize))
+  }, [editorFontSize])
+
+  useEffect(() => {
+    editorRef.current?.updateOptions({ fontSize: editorFontSize, lineHeight: Math.round(editorFontSize * 21 / defaultEditorFontSize) })
+  }, [editorFontSize])
 
   useEffect(() => {
     if (saved) return
@@ -928,7 +950,7 @@ function App() {
               </div>
             </div>
           </div> : <div className="editor-panel">
-            <div className="panel-tabs"><div className="active-tab"><FileCode2 size={13} />{activeFile}<span className="tab-dirty">{saved ? '' : '●'}</span></div><div className="editor-actions"><span>{editorLanguage === 'typescript' ? 'TypeScript' : editorLanguage.toUpperCase()}</span><span>UTF-8</span></div></div>
+            <div className="panel-tabs"><div className="active-tab"><FileCode2 size={13} />{activeFile}<span className="tab-dirty">{saved ? '' : '●'}</span></div><div className="editor-actions"><span>{editorLanguage === 'typescript' ? 'TypeScript' : editorLanguage.toUpperCase()}</span><div className="editor-font-controls" role="group" aria-label="Code editor font size"><button className="icon-button editor-font-button" onClick={() => setEditorFontSize((size) => Math.max(minEditorFontSize, size - 1))} disabled={editorFontSize <= minEditorFontSize} title="Decrease code font size" aria-label="Decrease code font size"><Minus size={13} /></button><output className="editor-font-readout" aria-live="polite">{editorFontSize}px</output><button className="icon-button editor-font-button" onClick={() => setEditorFontSize((size) => Math.min(maxEditorFontSize, size + 1))} disabled={editorFontSize >= maxEditorFontSize} title="Increase code font size" aria-label="Increase code font size"><Plus size={13} /></button><button className="icon-button editor-font-button editor-font-reset" onClick={() => setEditorFontSize(defaultEditorFontSize)} disabled={editorFontSize === defaultEditorFontSize} title="Reset code font size" aria-label="Reset code font size"><RotateCcw size={12} /></button></div><span>UTF-8</span></div></div>
             <div className="editor-body">
               <Editor
                 height="100%"
@@ -946,7 +968,7 @@ function App() {
                   })
                 }}
                 theme={theme === 'dark' ? 'vs-dark' : 'vs'}
-                options={{ minimap: { enabled: false }, fontSize: 13, lineHeight: 21, fontFamily: 'Consolas, monospace', scrollBeyondLastLine: false, padding: { top: 16 }, automaticLayout: true, tabSize: 2, wordWrap: 'off', renderLineHighlight: 'all', overviewRulerBorder: false }}
+                options={{ minimap: { enabled: false }, fontSize: editorFontSize, lineHeight: Math.round(editorFontSize * 21 / defaultEditorFontSize), fontFamily: 'Consolas, monospace', scrollBeyondLastLine: false, padding: { top: 16 }, automaticLayout: true, tabSize: 2, wordWrap: 'off', renderLineHighlight: 'all', overviewRulerBorder: false }}
               />
             </div>
           </div>}
