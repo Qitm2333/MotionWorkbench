@@ -18,4 +18,4 @@ npm run build
 npm run lint
 ```
 
-Curves, parameter controls, persistence for those values, and draft recovery are planned for M2 and are not part of this prototype yet.
+Canvas2D projects can register live boolean, numeric, color, and select parameters through `context.params.define(...)`. HTML projects can use `workbench.params.define(...)`; CSS can read values as `var(--param-parameterId)`. Projects are applied automatically on startup, after opening a project, and after creating one. Parameter overrides currently apply to the running preview; project persistence for those values, curve editing and reuse, and draft recovery remain planned M2 work.

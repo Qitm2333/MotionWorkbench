@@ -20,7 +20,7 @@
 .icon-button { width: 26px; height: 26px; display: inline-grid; place-items: center; padding: 0; border: 1px solid transparent; border-radius: 4px; background: transparent; color: #758078; cursor: pointer; }
 .icon-button:hover { border-color: #dce1dc; background: #e8ece8; color: #35483c; }
 .tree-root { display: flex; align-items: center; gap: 5px; height: 30px; width: 100%; padding: 0 13px; border: 0; border-top: 1px solid #e0e3e0; background: transparent; color: #526057; font-size: 10px; font-weight: 700; letter-spacing: .055em; text-align: left; cursor: pointer; }
-.file-list { padding: 3px 7px 10px; overflow: auto; }
+.file-list { flex: 1; min-height: 0; padding: 3px 7px 10px; overflow: auto; }
 .folder-row { width: 100%; height: 26px; display: flex; align-items: center; gap: 6px; border: 0; border-radius: 3px; padding-right: 7px; background: transparent; color: #77827b; font-size: 10px; text-align: left; cursor: pointer; }
 .folder-row:hover { background: #e8ece8; }
 .folder-row svg:nth-child(2) { color: #b18d4b; }
@@ -39,7 +39,24 @@
 .file-remove { width: 23px; height: 23px; display: grid; place-items: center; border: 0; border-radius: 3px; background: transparent; color: #9b7164; opacity: 0; cursor: pointer; }
 .file-row:hover .file-remove { opacity: 1; }
 .file-remove:hover { background: #f0e6e2; }
-.explorer-foot { margin-top: auto; padding: 10px 12px; display: flex; justify-content: space-between; border-top: 1px solid #dfe2de; color: #758078; font: 10px var(--mono); }
+.explorer-foot { padding: 7px 10px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #dfe2de; color: #758078; font: 10px var(--mono); }
+.parameters-toggle { min-width: 0; display: inline-flex; align-items: center; gap: 7px; padding: 3px; border: 0; background: transparent; color: inherit; font: 10px var(--mono); cursor: pointer; }
+.parameters-toggle:hover, .parameters-toggle.active { color: #365d45; }
+.parameters-toggle > span:nth-of-type(1) { white-space: nowrap; }
+.parameter-count { min-width: 17px; padding: 2px 4px; border-radius: 3px; background: #e4e9e4; text-align: center; }
+.file-count { white-space: nowrap; }
+.parameters-panel { max-height: 45%; overflow: auto; border-top: 1px solid #dfe2de; }
+.parameters-heading { position: sticky; top: 0; z-index: 1; height: 32px; display: flex; align-items: center; justify-content: space-between; padding: 0 9px 0 12px; background: #f1f3f0; color: #7c8580; font-size: 9px; font-weight: 700; letter-spacing: .06em; }
+.parameters-heading .icon-button { width: 23px; height: 23px; }
+.parameters-heading .icon-button:disabled { opacity: .4; cursor: default; }
+.parameter-control { display: grid; gap: 6px; padding: 7px 11px; border-top: 1px solid #e5e8e5; color: #46524a; font-size: 10px; }
+.parameter-label { overflow-wrap: anywhere; }
+.parameter-number { display: grid; grid-template-columns: minmax(0, 1fr) 56px; align-items: center; gap: 8px; }
+.parameter-number input[type="range"] { width: 100%; min-width: 0; accent-color: #007acc; }
+.parameter-number input[type="number"], .parameter-control select { width: 100%; min-width: 0; height: 25px; padding: 2px 5px; border: 1px solid #d4d9d5; border-radius: 3px; background: #fbfcfa; color: #303a34; font: 10px var(--mono); }
+.parameter-checkbox { width: 15px; height: 15px; accent-color: #007acc; }
+.parameter-color { width: 38px; height: 25px; padding: 2px; border: 1px solid #d4d9d5; border-radius: 3px; background: #fbfcfa; cursor: pointer; }
+.parameters-empty { padding: 12px; color: #818b84; font-size: 10px; line-height: 1.5; }
 .tiny-label { font: 700 9px 'Segoe UI', Arial, sans-serif; letter-spacing: .06em; }
 .editor-area { display: grid; min-width: 0; min-height: 0; overflow: hidden; }
 .editor-panel, .preview-panel { min-width: 0; min-height: 0; display: flex; flex-direction: column; background: #202625; }
@@ -128,6 +145,16 @@
 .workbench[data-theme="dark"] .entry-button:hover,
 .workbench[data-theme="dark"] .file-remove:hover { background: #454545; }
 .workbench[data-theme="dark"] .explorer-foot { color: #9d9d9d; border-color: #333333; }
+.workbench[data-theme="dark"] .parameters-toggle:hover,
+.workbench[data-theme="dark"] .parameters-toggle.active { color: #75beff; }
+.workbench[data-theme="dark"] .parameter-count { background: #37373d; }
+.workbench[data-theme="dark"] .parameters-panel { border-color: #333333; }
+.workbench[data-theme="dark"] .parameters-heading { color: #bbbbbb; background: #252526; }
+.workbench[data-theme="dark"] .parameter-control { color: #cccccc; border-color: #333333; }
+.workbench[data-theme="dark"] .parameter-number input[type="number"],
+.workbench[data-theme="dark"] .parameter-control select,
+.workbench[data-theme="dark"] .parameter-color { color: #cccccc; background: #1e1e1e; border-color: #454545; }
+.workbench[data-theme="dark"] .parameters-empty { color: #9d9d9d; }
 .workbench[data-theme="dark"] .editor-panel { background: #1e1e1e; }
 .workbench[data-theme="dark"] .panel-tabs { background: #252526; border-color: #333333; }
 .workbench[data-theme="dark"] .active-tab { color: #ffffff; background: #1e1e1e; border-top-color: #007acc; }
@@ -196,6 +223,16 @@
 .workbench[data-theme="light"] .entry-button:hover,
 .workbench[data-theme="light"] .file-remove:hover { background: #e8e8e8; }
 .workbench[data-theme="light"] .explorer-foot { color: #666666; border-color: #dddddd; }
+.workbench[data-theme="light"] .parameters-toggle:hover,
+.workbench[data-theme="light"] .parameters-toggle.active { color: #007acc; }
+.workbench[data-theme="light"] .parameter-count { background: #e8e8e8; }
+.workbench[data-theme="light"] .parameters-panel { border-color: #dddddd; }
+.workbench[data-theme="light"] .parameters-heading { color: #666666; background: #f3f3f3; }
+.workbench[data-theme="light"] .parameter-control { color: #444444; border-color: #e2e2e2; }
+.workbench[data-theme="light"] .parameter-number input[type="number"],
+.workbench[data-theme="light"] .parameter-control select,
+.workbench[data-theme="light"] .parameter-color { color: #333333; background: #ffffff; border-color: #cccccc; }
+.workbench[data-theme="light"] .parameters-empty { color: #777777; }
 .workbench[data-theme="light"] .editor-panel { background: #ffffff; }
 .workbench[data-theme="light"] .panel-tabs { background: #f3f3f3; border-color: #dddddd; }
 .workbench[data-theme="light"] .active-tab { color: #333333; background: #ffffff; border-top-color: #007acc; }

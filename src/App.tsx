@@ -1,14 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import Editor, { loader } from '@monaco-editor/react'
 import * as monaco from 'monaco-editor'
 import { ModuleResolutionKind, typescriptDefaults } from 'monaco-editor/languages/features/typescript/register.js'
-import { Activity, AlertCircle, Check, ChevronDown, ChevronRight, Circle, FileCode2, FilePlus2, Folder, FolderOpen, FolderPlus, Moon, Play, RotateCcw, Save, Square, Sun, Waves, X } from 'lucide-react'
+import { Activity, AlertCircle, Check, ChevronDown, ChevronRight, Circle, FileCode2, FilePlus2, Folder, FolderOpen, FolderPlus, Moon, Play, RotateCcw, Save, SlidersHorizontal, Square, Sun, Waves, X } from 'lucide-react'
 import './App.css'
 import { isAllowedProjectFile, isProjectEntry, isProjectSource, readProjectDirectory, starterHtmlProject, starterProject, writeProjectDirectory } from './project'
 import type { DirectoryHandle, Project } from './project'
 import { startHtmlPreview, startPreview } from './runtime'
-import type { PreviewRuntime } from './runtime'
+import type { ParameterDefinition, ParameterValue, PreviewRuntime } from './runtime'
 
 loader.config({ monaco })
 
@@ -49,15 +49,24 @@ function App() {
   const [message, setMessage] = useState('Ready to run')
   const [split, setSplit] = useState(50)
   const [consoleOpen, setConsoleOpen] = useState(true)
+  const [parametersOpen, setParametersOpen] = useState(false)
+  const [parameters, setParameters] = useState<ParameterDefinition[]>([])
+  const [parameterValues, setParameterValues] = useState<Record<string, ParameterValue>>({})
   const [newProjectOpen, setNewProjectOpen] = useState(false)
+  const [projectLoadId, setProjectLoadId] = useState(0)
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set())
   const [directoryName, setDirectoryName] = useState('Orbit study')
   const [theme, setTheme] = useState<'dark' | 'light'>(() => localStorage.getItem('workbench-theme') === 'light' ? 'light' : 'dark')
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const runtimeRef = useRef<PreviewRuntime | null>(null)
+  const projectRef = useRef(project)
   const directoryRef = useRef<DirectoryHandle | null>(null)
   const projectModelsRef = useRef(new Set<string>())
+
+  useLayoutEffect(() => {
+    projectRef.current = project
+  }, [project])
 
   const sourceFiles = useMemo(() => Object.keys(project.files).filter(isProjectSource).sort(), [project.files])
   const fileTree = useMemo(() => buildFileTree(sourceFiles), [sourceFiles])
@@ -96,25 +105,36 @@ function App() {
     setSaved(false)
   }
 
-  const applyCode = async () => {
+  const applyCode = useCallback(async () => {
+    const currentProject = projectRef.current
     setMessage('Compiling project…')
     try {
-      const runtime = project.manifest.projectType === 'html'
-        ? startHtmlPreview(iframeRef.current!, project)
-        : await startPreview(canvasRef.current!, project, (error) => {
+      const runtime = currentProject.manifest.projectType === 'html'
+        ? startHtmlPreview(iframeRef.current!, currentProject, (nextParameters, values) => {
+          setParameters(nextParameters)
+          setParameterValues(values)
+        })
+        : await startPreview(canvasRef.current!, currentProject, (error) => {
           setStatus('error')
           setMessage(error.message)
         })
       runtimeRef.current?.dispose()
       runtimeRef.current = runtime
+      setParameters(runtime.parameters)
+      setParameterValues(runtime.getParameterValues())
       setPreviewReady(true)
       setStatus('running')
-      setMessage(`Applied ${project.manifest.entry}`)
+      setMessage(`Applied ${currentProject.manifest.entry}`)
     } catch (error) {
       setStatus('error')
       setMessage(error instanceof Error ? error.message : String(error))
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    const request = requestAnimationFrame(() => { void applyCode() })
+    return () => cancelAnimationFrame(request)
+  }, [applyCode, projectLoadId])
 
   const openProject = async () => {
     if (!window.showDirectoryPicker) {
@@ -126,10 +146,13 @@ function App() {
       const opened = await readProjectDirectory(handle)
       runtimeRef.current?.dispose()
       runtimeRef.current = null
+      setParameters([])
+      setParameterValues({})
       setPreviewReady(false)
       directoryRef.current = handle
       setDirectoryName(handle.name)
       setProject(opened)
+      setProjectLoadId((id) => id + 1)
       setActiveFile(opened.manifest.entry)
       setSaved(true)
       setStatus('ready')
@@ -191,6 +214,17 @@ function App() {
     setMessage('Simulation reset')
   }
 
+  const updateParameter = (id: string, value: ParameterValue) => {
+    const runtime = runtimeRef.current
+    runtime?.setParameter(id, value)
+    setParameterValues(runtime?.getParameterValues() ?? {})
+  }
+
+  const resetParameters = () => {
+    runtimeRef.current?.resetParameters()
+    setParameterValues(runtimeRef.current?.getParameterValues() ?? {})
+  }
+
   const toggleRuntime = () => {
     if (!runtimeRef.current) {
       void applyCode()
@@ -238,8 +272,11 @@ function App() {
   const createProject = (type: 'canvas2d' | 'html') => {
     runtimeRef.current?.dispose()
     runtimeRef.current = null
+    setParameters([])
+    setParameterValues({})
     const nextProject = type === 'html' ? starterHtmlProject : starterProject
     setProject(nextProject)
+    setProjectLoadId((id) => id + 1)
     setActiveFile(nextProject.manifest.entry)
     setDirectoryName(nextProject.manifest.name)
     setSaved(false)
@@ -284,7 +321,7 @@ function App() {
   return (
     <main className="workbench" data-theme={theme}>
       <header className="topbar">
-        <div className="brand"><div className="brand-mark"><Waves size={16} /></div><span>FORM / MOTION</span><span className="brand-divider">/</span><span className="project-name">{project.manifest.name}</span>{!saved && <span className="dirty-mark" title="Unsaved changes" />}</div>
+        <div className="brand"><div className="brand-mark"><Waves size={16} /></div><span>MOTIONWORKBENCH</span><span className="brand-divider">/</span><span className="project-name">{project.manifest.name}</span>{!saved && <span className="dirty-mark" title="Unsaved changes" />}</div>
         <div className="top-actions">
           <button className="tool-button" onClick={() => setNewProjectOpen(true)} title="Create a project"><FolderPlus size={15} /><span>New</span></button>
           <button className="tool-button" onClick={openProject} title="Open project folder"><FolderOpen size={15} /><span>Open</span></button>
@@ -302,7 +339,20 @@ function App() {
           <div className="file-list">
             {renderTree(fileTree)}
           </div>
-          <div className="explorer-foot"><span className="tiny-label">PROJECT FILES</span><span>{sourceFiles.length.toString().padStart(2, '0')}</span></div>
+          {parametersOpen && <section className="parameters-panel" aria-label="Project parameters">
+            <div className="parameters-heading"><span>PARAMETERS</span><button className="icon-button" onClick={resetParameters} disabled={!parameters.length} title="Restore parameter defaults"><RotateCcw size={13} /></button></div>
+            {parameters.length ? parameters.map((parameter) => <label className="parameter-control" key={parameter.id}>
+              <span className="parameter-label">{parameter.label}</span>
+              {parameter.type === 'number' && <div className="parameter-number">
+                <input type="range" min={parameter.min} max={parameter.max} step={parameter.step ?? 'any'} value={Number(parameterValues[parameter.id] ?? parameter.default)} onChange={(event) => updateParameter(parameter.id, Number(event.target.value))} aria-label={parameter.label} />
+                <input type="number" min={parameter.min} max={parameter.max} step={parameter.step ?? 'any'} value={Number(parameterValues[parameter.id] ?? parameter.default)} onChange={(event) => updateParameter(parameter.id, Number(event.target.value))} aria-label={`${parameter.label} value`} />
+              </div>}
+              {parameter.type === 'boolean' && <input className="parameter-checkbox" type="checkbox" checked={Boolean(parameterValues[parameter.id] ?? parameter.default)} onChange={(event) => updateParameter(parameter.id, event.target.checked)} />}
+              {parameter.type === 'color' && <input className="parameter-color" type="color" value={String(parameterValues[parameter.id] ?? parameter.default)} onChange={(event) => updateParameter(parameter.id, event.target.value)} aria-label={parameter.label} />}
+              {parameter.type === 'select' && <select value={String(parameterValues[parameter.id] ?? parameter.default)} onChange={(event) => updateParameter(parameter.id, event.target.value)} aria-label={parameter.label}>{parameter.options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>}
+            </label>) : <div className="parameters-empty">No parameters declared in this project.</div>}
+          </section>}
+          <div className="explorer-foot"><button className={`parameters-toggle ${parametersOpen ? 'active' : ''}`} onClick={() => setParametersOpen((open) => !open)} aria-expanded={parametersOpen}><SlidersHorizontal size={13} /><span>Parameters</span><span className="parameter-count">{parameters.length}</span></button><span className="file-count">{sourceFiles.length.toString().padStart(2, '0')} files</span></div>
         </aside>
 
         <section className="editor-area" style={{ gridTemplateColumns: `${split}fr 5px ${100 - split}fr` }}>
