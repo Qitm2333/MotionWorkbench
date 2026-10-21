@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { PointerEvent as ReactPointerEvent, ReactNode } from 'react'
+import type { DragEvent as ReactDragEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import Editor, { loader } from '@monaco-editor/react'
 import * as monaco from 'monaco-editor'
 import { ModuleResolutionKind, typescriptDefaults } from 'monaco-editor/languages/features/typescript/register.js'
-import { Activity, AlertCircle, Check, ChevronDown, ChevronRight, Circle, Copy, FileCode2, FilePlus2, Folder, FolderOpen, FolderPlus, Moon, Play, RotateCcw, Save, SlidersHorizontal, Square, Sun, Waves, X } from 'lucide-react'
+import { Activity, AlertCircle, Check, ChevronDown, ChevronRight, Circle, Copy, Download, FileCode2, FilePlus2, Folder, FolderOpen, FolderPlus, Maximize2, Minimize2, Moon, Play, RotateCcw, Save, SlidersHorizontal, Square, Sun, Trash2, Upload, Waves, X } from 'lucide-react'
 import './App.css'
-import { isAllowedProjectFile, isProjectEntry, isProjectSource, readProjectDirectory, starterHtmlProject, starterProject, writeProjectDirectory } from './project'
+import { createCurveFromPreset, curvePresets, isAllowedProjectFile, isProjectEntry, isProjectSource, readProjectDirectory, sampleCurveValue, starterHtmlProject, starterProject, validateProject, writeProjectDirectory } from './project'
 import type { CurveResource, DirectoryHandle, Project } from './project'
 import { startHtmlPreview, startPreview } from './runtime'
 import type { ParameterDefinition, ParameterValue, PreviewRuntime } from './runtime'
@@ -15,7 +15,23 @@ loader.config({ monaco })
 type Status = 'ready' | 'running' | 'paused' | 'error'
 type FileTreeNode = { name: string; path: string; children?: FileTreeNode[] }
 type ProjectDraft = { project: Project; activeFile: string; savedAt: number }
+type CurvePoints = Extract<CurveResource, { type: 'cubic-bezier' }>['points']
+type PreviewDimensions = { width: number; height: number }
 const draftStorageKey = 'motion-workbench-draft-v1'
+const layoutStorageKey = 'motion-workbench-layout-v1'
+
+function readLayout() {
+  try {
+    const layout = JSON.parse(localStorage.getItem(layoutStorageKey) ?? 'null') as { split?: number; consoleOpen?: boolean } | null
+    return { split: typeof layout?.split === 'number' ? Math.max(30, Math.min(70, layout.split)) : 50, consoleOpen: layout?.consoleOpen ?? true }
+  } catch {
+    return { split: 50, consoleOpen: true }
+  }
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
 
 function readDraft(): ProjectDraft | null {
   try {
@@ -24,7 +40,7 @@ function readDraft(): ProjectDraft | null {
     const manifest = value.project.manifest
     if (manifest.formatVersion !== 1 || !['canvas2d', 'html'].includes(manifest.projectType) || typeof manifest.entry !== 'string' || typeof manifest.name !== 'string') return null
     if (!Object.keys(value.project.files).length || Object.values(value.project.files).some((contents) => typeof contents !== 'string')) return null
-    return value
+    return { ...value, project: validateProject(value.project) }
   } catch {
     return null
   }
@@ -62,11 +78,14 @@ function App() {
   const [status, setStatus] = useState<Status>('ready')
   const [previewReady, setPreviewReady] = useState(false)
   const [message, setMessage] = useState('Ready to run')
-  const [split, setSplit] = useState(50)
-  const [consoleOpen, setConsoleOpen] = useState(true)
+  const [split, setSplit] = useState(() => readLayout().split)
+  const [consoleOpen, setConsoleOpen] = useState(() => readLayout().consoleOpen)
   const [workspaceMode, setWorkspaceMode] = useState<'code' | 'curve' | 'parameters'>('code')
   const [selectedCurveId, setSelectedCurveId] = useState<string | null>(null)
   const [draggingCurveHandle, setDraggingCurveHandle] = useState<number | null>(null)
+  const [curvePreviewProgress, setCurvePreviewProgress] = useState(0.5)
+  const [pendingCurveDelete, setPendingCurveDelete] = useState<string | null>(null)
+  const [curveReplacementId, setCurveReplacementId] = useState('')
   const [parameters, setParameters] = useState<ParameterDefinition[]>([])
   const [parameterValues, setParameterValues] = useState<Record<string, ParameterValue>>({})
   const [newProjectOpen, setNewProjectOpen] = useState(false)
@@ -74,6 +93,11 @@ function App() {
   const [projectLoadId, setProjectLoadId] = useState(0)
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set())
   const [directoryName, setDirectoryName] = useState('Orbit study')
+  const [previewZoom, setPreviewZoom] = useState('fit')
+  const [htmlViewport, setHtmlViewport] = useState('responsive')
+  const [previewFullscreen, setPreviewFullscreen] = useState(false)
+  const [stageSize, setStageSize] = useState<PreviewDimensions>({ width: 0, height: 0 })
+  const [explorerDragActive, setExplorerDragActive] = useState(false)
   const [theme, setTheme] = useState<'dark' | 'light'>(() => localStorage.getItem('workbench-theme') === 'light' ? 'light' : 'dark')
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
@@ -81,6 +105,33 @@ function App() {
   const projectRef = useRef(project)
   const directoryRef = useRef<DirectoryHandle | null>(null)
   const projectModelsRef = useRef(new Set<string>())
+  const importInputRef = useRef<HTMLInputElement>(null)
+  const applyRequestRef = useRef(0)
+  const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
+  const stageRef = useRef<HTMLDivElement>(null)
+
+  const measureStage = useCallback(() => {
+    const stage = stageRef.current
+    if (!stage) return
+    const style = getComputedStyle(stage)
+    setStageSize({
+      width: Math.max(1, stage.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)),
+      height: Math.max(1, stage.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom)),
+    })
+  }, [])
+
+  useLayoutEffect(() => {
+    measureStage()
+    const stage = stageRef.current
+    if (!stage) return
+    const observer = new ResizeObserver(measureStage)
+    observer.observe(stage)
+    return () => observer.disconnect()
+  }, [measureStage, previewFullscreen])
+
+  useEffect(() => {
+    localStorage.setItem(layoutStorageKey, JSON.stringify({ split, consoleOpen }))
+  }, [split, consoleOpen])
 
   useEffect(() => {
     if (saved) return
@@ -137,18 +188,29 @@ function App() {
   }
 
   const applyCode = useCallback(async () => {
+    const requestId = ++applyRequestRef.current
     const currentProject = projectRef.current
     setMessage('Compiling project…')
     try {
       const runtime = currentProject.manifest.projectType === 'html'
         ? startHtmlPreview(iframeRef.current!, currentProject, (nextParameters, values) => {
+          if (requestId !== applyRequestRef.current) return
           setParameters(nextParameters)
           setParameterValues(values)
-        }, currentProject.manifest.parameterValues)
-        : await startPreview(canvasRef.current!, currentProject, (error) => {
+        }, currentProject.manifest.parameterValues, (error) => {
+          if (requestId !== applyRequestRef.current) return
           setStatus('error')
           setMessage(error.message)
-        }, currentProject.manifest.parameterValues)
+        })
+        : await startPreview(canvasRef.current!, currentProject, (error) => {
+          if (requestId !== applyRequestRef.current) return
+          setStatus('error')
+          setMessage(error.message)
+        }, currentProject.manifest.parameterValues, () => requestId === applyRequestRef.current)
+      if (requestId !== applyRequestRef.current) {
+        runtime.dispose()
+        return
+      }
       runtimeRef.current?.dispose()
       runtimeRef.current = runtime
       setParameters(runtime.parameters)
@@ -157,6 +219,7 @@ function App() {
       setStatus('running')
       setMessage(`Applied ${currentProject.manifest.entry}`)
     } catch (error) {
+      if (requestId !== applyRequestRef.current) return
       setStatus('error')
       setMessage(error instanceof Error ? error.message : String(error))
     }
@@ -167,9 +230,19 @@ function App() {
     return () => cancelAnimationFrame(request)
   }, [applyCode, projectLoadId])
 
+  useEffect(() => {
+    if (!previewFullscreen) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setPreviewFullscreen(false)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [previewFullscreen])
+
   const openProject = async () => {
     if (!window.showDirectoryPicker) {
-      setMessage('Project folders need a Chromium browser with File System Access support')
+      importInputRef.current?.click()
+      setMessage('Folder access is unavailable; choose a portable project bundle instead')
       return
     }
     try {
@@ -196,9 +269,9 @@ function App() {
     }
   }
 
-  const saveProject = async () => {
+  const saveProject = async (snapshot: Project = projectRef.current) => {
     if (!window.showDirectoryPicker) {
-      setMessage('Project folders need a Chromium browser with File System Access support')
+      exportProject(snapshot)
       return
     }
     try {
@@ -212,7 +285,7 @@ function App() {
         directoryRef.current = handle
         setDirectoryName(handle.name)
       }
-      await writeProjectDirectory(handle, project)
+      await writeProjectDirectory(handle, snapshot)
       localStorage.removeItem(draftStorageKey)
       setDraftPrompt(null)
       setSaved(true)
@@ -221,6 +294,97 @@ function App() {
       if (error instanceof DOMException && error.name === 'AbortError') return
       setMessage(error instanceof Error ? error.message : String(error))
     }
+  }
+
+  const saveAndApply = async () => {
+    const editor = editorRef.current
+    const model = editor?.getModel()
+    const snapshot = model && activeFile
+      ? { ...projectRef.current, files: { ...projectRef.current.files, [activeFile]: model.getValue() } }
+      : projectRef.current
+    projectRef.current = snapshot
+    setProject(snapshot)
+    await saveProject(snapshot)
+    void applyCode()
+  }
+
+  const importDroppedFiles = async (files: File[]) => {
+    if (!files.length) return
+    const current = projectRef.current
+    const accepted = files.filter((file) => isAllowedProjectFile(file.name, current.manifest.projectType))
+    if (!accepted.length) {
+      setMessage(current.manifest.projectType === 'html' ? 'Drop .html or .css files into Explorer' : 'Drop .js, .jsx, .ts, or .tsx files into Explorer')
+      return
+    }
+    const nextFiles = { ...current.files }
+    const imported: string[] = []
+    const normalizePath = (file: File) => {
+      const relative = (file.webkitRelativePath || file.name).replaceAll('\\', '/')
+      const parts = relative.split('/').filter((part) => part && part !== '.')
+      if (parts.some((part) => part === '..') || relative.startsWith('/')) return file.name
+      return parts.join('/')
+    }
+    for (const file of accepted) {
+      const originalPath = normalizePath(file)
+      if (!isAllowedProjectFile(originalPath, current.manifest.projectType)) continue
+      const dot = originalPath.lastIndexOf('.')
+      const stem = dot > originalPath.lastIndexOf('/') ? originalPath.slice(0, dot) : originalPath
+      const extension = dot > originalPath.lastIndexOf('/') ? originalPath.slice(dot) : ''
+      let targetPath = originalPath
+      let suffix = 2
+      while (targetPath in nextFiles) targetPath = `${stem} (${suffix++})${extension}`
+      nextFiles[targetPath] = await file.text()
+      imported.push(targetPath)
+    }
+    if (!imported.length) return
+    const firstHtml = imported.find((path) => /\.html?$/i.test(path))
+    const nextProject = {
+      ...current,
+      files: nextFiles,
+      manifest: firstHtml && current.manifest.projectType === 'html'
+        ? { ...current.manifest, entry: firstHtml }
+        : current.manifest,
+    }
+    projectRef.current = nextProject
+    setProject(nextProject)
+    setActiveFile(firstHtml ?? imported[0])
+    setWorkspaceMode('code')
+    setSelectedCurveId(null)
+    setSaved(false)
+    setMessage(`Imported ${imported.length} file${imported.length === 1 ? '' : 's'} into Explorer`)
+    void applyCode()
+  }
+
+  const onExplorerDrop = (event: ReactDragEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    setExplorerDragActive(false)
+    void importDroppedFiles(Array.from(event.dataTransfer.files))
+  }
+
+  const previewBaseSize: PreviewDimensions = project.manifest.projectType === 'html'
+    ? htmlViewport === 'responsive'
+      ? stageSize
+      : (() => {
+        const [width, height] = htmlViewport.split('x').map(Number)
+        return { width, height }
+      })()
+    : project.manifest.renderer.type === 'canvas2d'
+      ? { width: project.manifest.renderer.width, height: project.manifest.renderer.height }
+      : stageSize
+  // Keep a small breathing room so Fit never lands exactly on the scrollbar
+  // threshold and causes the stage to oscillate between scrollable states.
+  const fitWidth = Math.max(1, stageSize.width - 16)
+  const fitHeight = Math.max(1, stageSize.height - 16)
+  const requestedZoom = previewZoom === 'fit' ? Math.min(1, fitWidth / Math.max(1, previewBaseSize.width), fitHeight / Math.max(1, previewBaseSize.height)) : Number(previewZoom) / 100
+  const displayedZoom = Math.max(0.1, requestedZoom || 0.1)
+  const previewFrameStyle = {
+    width: `${previewBaseSize.width * displayedZoom}px`,
+    height: `${previewBaseSize.height * displayedZoom}px`,
+  }
+  const previewContentStyle = {
+    width: `${previewBaseSize.width}px`,
+    height: `${previewBaseSize.height}px`,
+    transform: `scale(${displayedZoom})`,
   }
 
   const addFile = () => {
@@ -247,8 +411,9 @@ function App() {
       return
     }
     runtimeRef.current.reset()
-    setStatus('running')
-    setMessage('Simulation reset')
+    const paused = runtimeRef.current.getPaused()
+    setStatus(paused ? 'paused' : 'running')
+    setMessage(paused ? 'Simulation reset while paused' : 'Simulation reset')
   }
 
   const updateParameter = (id: string, value: ParameterValue) => {
@@ -270,21 +435,22 @@ function App() {
 
   const updateCurvePoint = (curveId: string, pointIndex: number, value: number) => {
     const currentCurve = projectRef.current.manifest.curves?.find((curve) => curve.id === curveId)
-    if (currentCurve) {
-      const points = currentCurve.points.map((point, index) => index === pointIndex ? value : point) as CurveResource['points']
+    if (currentCurve?.type === 'cubic-bezier') {
+      const points = currentCurve.points.map((point, index) => index === pointIndex ? value : point) as CurvePoints
       setCurvePoints(curveId, points)
     }
   }
 
-  const setCurvePoints = (curveId: string, points: CurveResource['points']) => {
-    runtimeRef.current?.setCurve?.(curveId, points)
+  const setCurvePoints = (curveId: string, points: CurvePoints) => {
+    const existing = projectRef.current.manifest.curves?.find((curve) => curve.id === curveId)
+    if (existing?.type === 'cubic-bezier') runtimeRef.current?.setCurve?.({ ...existing, points })
     setProject((current) => ({
       ...current,
       manifest: {
         ...current.manifest,
-        curves: (current.manifest.curves ?? []).map((curve) => curve.id !== curveId ? curve : {
-          ...curve,
-          points,
+        curves: (current.manifest.curves ?? []).map((curve) => {
+          if (curve.id !== curveId || curve.type !== 'cubic-bezier') return curve
+          return { ...curve, points }
         }),
       },
     }))
@@ -292,7 +458,7 @@ function App() {
   }
 
   const updateCurveFromPointer = (event: ReactPointerEvent<SVGSVGElement>) => {
-    if (draggingCurveHandle === null || !selectedCurve) return
+    if (draggingCurveHandle === null || selectedCurve?.type !== 'cubic-bezier') return
     const svg = event.currentTarget
     const transform = svg.getScreenCTM()
     if (!transform) return
@@ -302,7 +468,7 @@ function App() {
     const point = pointer.matrixTransform(transform.inverse())
     const x = Math.max(0, Math.min(1, (point.x - 32) / 256))
     const y = Math.max(-2, Math.min(3, (216 - point.y) / 192))
-    const points = [...selectedCurve.points] as CurveResource['points']
+    const points = [...selectedCurve.points] as CurvePoints
     points[draggingCurveHandle * 2] = x
     points[draggingCurveHandle * 2 + 1] = y
     setCurvePoints(selectedCurve.id, points)
@@ -322,10 +488,146 @@ function App() {
     setSaved(false)
   }
 
+  const changeCurveType = (curveId: string, type: CurveResource['type']) => {
+    const existing = projectRef.current.manifest.curves?.find((curve) => curve.id === curveId)
+    if (existing && existing.type !== type) {
+      const updated: CurveResource = type === 'linear'
+        ? { id: existing.id, name: existing.name, type }
+        : type === 'spring'
+          ? { id: existing.id, name: existing.name, type, mass: 1, stiffness: 100, damping: 10 }
+          : { id: existing.id, name: existing.name, type, points: [0.25, 0.1, 0.25, 1] }
+      runtimeRef.current?.setCurve?.(updated)
+    }
+    setProject((current) => ({
+      ...current,
+      manifest: { ...current.manifest, curves: (current.manifest.curves ?? []).map((curve) => {
+        if (curve.id !== curveId || curve.type === type) return curve
+        const updated: CurveResource = type === 'linear'
+          ? { id: curve.id, name: curve.name, type }
+          : type === 'spring'
+            ? { id: curve.id, name: curve.name, type, mass: 1, stiffness: 100, damping: 10 }
+            : { id: curve.id, name: curve.name, type, points: [0.25, 0.1, 0.25, 1] }
+        return updated
+      }) },
+    }))
+    setSaved(false)
+  }
+
+  const addCurvePreset = (preset: string) => {
+    const id = `curve-${crypto.randomUUID().slice(0, 8)}`
+    const curve = createCurveFromPreset(preset, id)
+    if (!curve) return
+    setProject((current) => ({ ...current, manifest: { ...current.manifest, curves: [...(current.manifest.curves ?? []), curve] } }))
+    setSelectedCurveId(curve.id)
+    setWorkspaceMode('curve')
+    setSaved(false)
+  }
+
+  const curveGraphPath = (curve: CurveResource, left: number, baseY: number, plotWidth: number, plotHeight: number) => {
+    const sampleCount = curve.type === 'linear' ? 1 : 48
+    return Array.from({ length: sampleCount + 1 }, (_, index) => {
+      const progress = index / sampleCount
+      const value = sampleCurveValue(curve, progress)
+      const x = left + progress * plotWidth
+      const y = baseY - value * plotHeight
+      return `${index === 0 ? 'M' : 'L'}${x} ${y}`
+    }).join(' ')
+  }
+
+  const updateSpringCurve = (curve: Extract<CurveResource, { type: 'spring' }>, key: 'mass' | 'stiffness' | 'damping', value: number) => {
+    const updated = { ...curve, [key]: value }
+    runtimeRef.current?.setCurve?.(updated)
+    setProject((current) => ({ ...current, manifest: { ...current.manifest, curves: (current.manifest.curves ?? []).map((item) => item.id === curve.id ? updated : item) } }))
+    setSaved(false)
+  }
+
+  const curveReferences = (curveId: string) => Object.entries(project.files)
+    .filter(([, source]) => new RegExp(`curves\\.sample\\(\\s*([\\x27\\x22\\x60])${escapeRegExp(curveId)}\\1`, 'g').test(source))
+    .map(([path]) => path)
+
+  const removeCurve = (curveId: string) => {
+    const curve = project.manifest.curves?.find((item) => item.id === curveId)
+    if (!curve) return
+    const replacement = project.manifest.curves?.find((item) => item.id !== curveId)
+    setPendingCurveDelete(curveId)
+    setCurveReplacementId(replacement?.id ?? '')
+  }
+
+  const confirmRemoveCurve = async () => {
+    if (!pendingCurveDelete) return
+    const references = curveReferences(pendingCurveDelete)
+    if (references.length && !project.manifest.curves?.some((item) => item.id === curveReplacementId && item.id !== pendingCurveDelete)) {
+      setMessage('Choose a replacement for the referenced curve')
+      return
+    }
+    const referencePattern = new RegExp(`(curves\\.sample\\(\\s*)([\\x27\\x22\\x60])${escapeRegExp(pendingCurveDelete)}\\2`, 'g')
+    const files = references.length
+      ? Object.fromEntries(Object.entries(project.files).map(([path, source]) => [path, source.replace(referencePattern, (_match, prefix: string, quote: string) => `${prefix}${quote}${curveReplacementId}${quote}`)]))
+      : project.files
+    const nextProject: Project = {
+      ...project,
+      files,
+      manifest: { ...project.manifest, curves: (project.manifest.curves ?? []).filter((item) => item.id !== pendingCurveDelete) },
+    }
+    projectRef.current = nextProject
+    setProject(nextProject)
+    setSelectedCurveId(null)
+    setWorkspaceMode('code')
+    setPendingCurveDelete(null)
+    setSaved(false)
+    setMessage(references.length ? `Replaced curve references in ${references.length} file${references.length === 1 ? '' : 's'}` : 'Curve deleted')
+    await applyCode()
+  }
+
+  const resetLayout = () => {
+    setSplit(50)
+    setConsoleOpen(true)
+    setCollapsedFolders(new Set())
+    setMessage('Workspace layout restored')
+  }
+
+  const exportProject = (snapshot: Project = projectRef.current) => {
+    const blob = new Blob([JSON.stringify({ format: 'motion-workbench-project', version: 1, project: snapshot }, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${snapshot.manifest.name.replace(/[^\w-]+/g, '-').toLowerCase() || 'motion-project'}.motionworkbench.json`
+    link.click()
+    URL.revokeObjectURL(url)
+    setMessage('Project exported as a portable JSON bundle')
+  }
+
+  const importProject = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    try {
+      const bundle = JSON.parse(await file.text()) as { format?: string; version?: number; project?: Project }
+      if (bundle.format !== 'motion-workbench-project' || bundle.version !== 1 || !bundle.project?.manifest || !bundle.project.files) throw new Error('Unsupported project bundle')
+      const opened = validateProject(bundle.project)
+      runtimeRef.current?.dispose()
+      runtimeRef.current = null
+      setProject(opened)
+      setDirectoryName(opened.manifest.name)
+      setActiveFile(opened.manifest.entry)
+      setSelectedCurveId(null)
+      setWorkspaceMode('code')
+      setSaved(false)
+      setPreviewReady(false)
+      setProjectLoadId((id) => id + 1)
+      directoryRef.current = null
+      setMessage(`Imported ${file.name}; save to a project folder when ready`)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error))
+    }
+  }
+
   const duplicateCurve = (curveId: string) => {
     const source = project.manifest.curves?.find((curve) => curve.id === curveId)
     if (!source) return
-    const copy: CurveResource = { ...source, id: `curve-${crypto.randomUUID().slice(0, 8)}`, name: `${source.name} copy`, points: [...source.points] }
+    const copy: CurveResource = source.type === 'cubic-bezier'
+      ? { ...source, id: `curve-${crypto.randomUUID().slice(0, 8)}`, name: `${source.name} copy`, points: [...source.points] }
+      : { ...source, id: `curve-${crypto.randomUUID().slice(0, 8)}`, name: `${source.name} copy` }
     setProject((current) => ({ ...current, manifest: { ...current.manifest, curves: [...(current.manifest.curves ?? []), copy] } }))
     setSelectedCurveId(copy.id)
     setWorkspaceMode('curve')
@@ -452,7 +754,10 @@ function App() {
         <div className="top-actions">
           <button className="tool-button" onClick={() => setNewProjectOpen(true)} title="Create a project"><FolderPlus size={15} /><span>New</span></button>
           <button className="tool-button" onClick={openProject} title="Open project folder"><FolderOpen size={15} /><span>Open</span></button>
-          <button className="tool-button" onClick={saveProject} title="Save project folder"><Save size={15} /><span>Save</span></button>
+          <button className="tool-button" onClick={() => void saveProject()} title="Save project folder"><Save size={15} /><span>Save</span></button>
+          <button className="icon-button" onClick={() => importInputRef.current?.click()} title="Import portable project"><Upload size={15} /></button>
+          <button className="icon-button" onClick={() => exportProject()} title="Export portable project"><Download size={15} /></button>
+          <input ref={importInputRef} className="visually-hidden" type="file" accept=".json,.motionworkbench.json,application/json" onChange={importProject} />
           <span className="top-separator" />
           <button className="icon-button theme-toggle" onClick={toggleTheme} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}>{theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}</button>
           <button className="run-button" onClick={applyCode}><Play size={14} fill="currentColor" /> Apply</button>
@@ -463,24 +768,26 @@ function App() {
         <aside className="explorer">
           <div className="section-heading"><span>EXPLORER</span><div><button className="icon-button" onClick={addFile} title="New source file"><FilePlus2 size={15} /></button><button className="icon-button" onClick={openProject} title="Open project folder"><FolderPlus size={15} /></button></div></div>
           <button className="tree-root" onClick={() => setMessage(`${directoryName} · ${sourceFiles.length} source files`)}><ChevronDown size={14} /><span>{directoryName.toUpperCase()}</span></button>
-          <div className="file-list">
+          <div className={`file-list ${explorerDragActive ? 'drag-active' : ''}`} onDragEnter={(event) => { event.preventDefault(); setExplorerDragActive(true) }} onDragOver={(event) => event.preventDefault()} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setExplorerDragActive(false) }} onDrop={onExplorerDrop}>
             {renderTree(fileTree)}
+            {explorerDragActive && <div className="drop-overlay"><Upload size={17} /><span>Drop project files to import</span></div>}
           </div>
           <section className="curves-list" aria-label="Project curves">
-            <div className="curves-list-heading"><span>CURVES</span><button className="icon-button" onClick={addCurve} title="New curve"><FilePlus2 size={14} /></button></div>
+            <div className="curves-list-heading"><span>CURVES</span><div className="curve-list-actions"><select className="curve-preset-select" aria-label="Add curve preset" value="" onChange={(event) => addCurvePreset(event.target.value)}><option value="" disabled>+ Preset</option>{(['Basic', 'Ease', 'Expressive'] as const).map((group) => <optgroup key={group} label={group}>{curvePresets.filter((preset) => preset.group === group).map((preset) => <option key={preset.id} value={preset.id}>{preset.label}</option>)}</optgroup>)}</select><button className="icon-button" onClick={addCurve} title="New cubic bezier curve"><FilePlus2 size={14} /></button></div></div>
             {(project.manifest.curves ?? []).map((curve) => {
-              const [x1, y1, x2, y2] = curve.points
+              const [x1, y1, x2, y2] = curve.type === 'cubic-bezier' ? curve.points : [0, 0, 0, 0]
               return <div className={`curve-row ${selectedCurveId === curve.id ? 'selected' : ''}`} key={curve.id}>
                 <button className="curve-row-select" onClick={() => { setSelectedCurveId(curve.id); setWorkspaceMode('curve') }} title={`Edit ${curve.name}`}>
-                  <svg viewBox="0 0 32 20" aria-hidden="true"><path d={`M1 19 C${1 + x1 * 30} ${19 - y1 * 18}, ${1 + x2 * 30} ${19 - y2 * 18}, 31 1`} /></svg>
+                  <svg viewBox="0 0 32 20" aria-hidden="true"><path d={curve.type === 'cubic-bezier' ? `M1 19 C${1 + x1 * 30} ${19 - y1 * 18}, ${1 + x2 * 30} ${19 - y2 * 18}, 31 1` : curveGraphPath(curve, 1, 19, 30, 18)} /></svg>
                   <span>{curve.name}</span>
                 </button>
                 <button className="icon-button curve-copy" onClick={() => duplicateCurve(curve.id)} title={`Duplicate ${curve.name}`}><Copy size={12} /></button>
+                <button className="icon-button curve-delete" onClick={() => removeCurve(curve.id)} title={`Delete ${curve.name}`}><Trash2 size={12} /></button>
               </div>
             })}
             {!(project.manifest.curves?.length) && <div className="parameters-empty">No curves yet.</div>}
           </section>
-          <div className="explorer-foot"><button className={`parameters-toggle ${workspaceMode === 'parameters' ? 'active' : ''}`} onClick={() => setWorkspaceMode((mode) => mode === 'parameters' ? 'code' : 'parameters')} aria-pressed={workspaceMode === 'parameters'}><SlidersHorizontal size={13} /><span>Parameters</span><span className="parameter-count">{parameters.length}</span></button><span className="file-count">{sourceFiles.length.toString().padStart(2, '0')} files</span></div>
+          <div className="explorer-foot"><button className={`parameters-toggle ${workspaceMode === 'parameters' ? 'active' : ''}`} onClick={() => setWorkspaceMode((mode) => mode === 'parameters' ? 'code' : 'parameters')} aria-pressed={workspaceMode === 'parameters'}><SlidersHorizontal size={13} /><span>Parameters</span><span className="parameter-count">{parameters.length}</span></button><button className="icon-button layout-reset" onClick={resetLayout} title="Restore default workspace layout"><RotateCcw size={13} /></button><span className="file-count">{sourceFiles.length.toString().padStart(2, '0')} files</span></div>
         </aside>
 
         <section className="editor-area" style={{ gridTemplateColumns: `${split}fr 5px ${100 - split}fr` }}>
@@ -496,21 +803,27 @@ function App() {
               </label>)}</div> : <div className="parameter-empty-state">No parameters declared in this project.</div>}
             </div>
           </section> : workspaceMode === 'curve' && selectedCurve ? <div className="curve-editor">
-            <div className="panel-tabs"><div className="active-tab"><Waves size={13} />{selectedCurve.name}<span className="curve-id">{selectedCurve.id}</span></div><div className="editor-actions"><span>CUBIC BEZIER</span></div></div>
+            <div className="panel-tabs"><div className="active-tab"><Waves size={13} />{selectedCurve.name}<span className="curve-id">{selectedCurve.id}</span></div><div className="editor-actions"><span>{selectedCurve.type.toUpperCase()}</span></div></div>
             <div className="curve-editor-content">
               <div className="curve-editor-graph-wrap">
                 <svg className="curve-editor-graph" viewBox="0 0 320 240" onPointerMove={updateCurveFromPointer} onPointerUp={() => setDraggingCurveHandle(null)} onPointerCancel={() => setDraggingCurveHandle(null)} role="img" aria-label={`${selectedCurve.name} curve editor`}>
                   <path className="curve-editor-grid" d="M32 24V216H288M32 120H288M160 24V216" />
-                  <path className="curve-editor-handle-line" d={`M32 216L${32 + selectedCurve.points[0] * 256} ${216 - selectedCurve.points[1] * 192}M288 24L${32 + selectedCurve.points[2] * 256} ${216 - selectedCurve.points[3] * 192}`} />
-                  <path className="curve-editor-line" d={`M32 216 C${32 + selectedCurve.points[0] * 256} ${216 - selectedCurve.points[1] * 192}, ${32 + selectedCurve.points[2] * 256} ${216 - selectedCurve.points[3] * 192}, 288 24`} />
-                  {[0, 1].map((handle) => <circle key={handle} className="curve-editor-handle" cx={32 + selectedCurve.points[handle * 2] * 256} cy={216 - selectedCurve.points[handle * 2 + 1] * 192} r="6" onPointerDown={(event) => { event.currentTarget.ownerSVGElement?.setPointerCapture(event.pointerId); setDraggingCurveHandle(handle) }} />)}
+                  {selectedCurve.type === 'cubic-bezier' && <path className="curve-editor-handle-line" d={`M32 216L${32 + selectedCurve.points[0] * 256} ${216 - selectedCurve.points[1] * 192}M288 24L${32 + selectedCurve.points[2] * 256} ${216 - selectedCurve.points[3] * 192}`} />}
+                  <path className="curve-editor-line" d={selectedCurve.type === 'cubic-bezier' ? `M32 216 C${32 + selectedCurve.points[0] * 256} ${216 - selectedCurve.points[1] * 192}, ${32 + selectedCurve.points[2] * 256} ${216 - selectedCurve.points[3] * 192}, 288 24` : curveGraphPath(selectedCurve, 32, 216, 256, 192)} />
+                  <line className="curve-editor-probe" x1={32 + curvePreviewProgress * 256} x2={32 + curvePreviewProgress * 256} y1="24" y2="216" />
+                  <circle className="curve-editor-probe-point" cx={32 + curvePreviewProgress * 256} cy={Math.max(0, Math.min(240, 216 - sampleCurveValue(selectedCurve, curvePreviewProgress) * 192))} r="4" />
+                  {selectedCurve.type === 'cubic-bezier' && [0, 1].map((handle) => <circle key={handle} className="curve-editor-handle" cx={32 + selectedCurve.points[handle * 2] * 256} cy={216 - selectedCurve.points[handle * 2 + 1] * 192} r="6" onPointerDown={(event) => { event.currentTarget.ownerSVGElement?.setPointerCapture(event.pointerId); setDraggingCurveHandle(handle) }} />)}
                 </svg>
                 <div className="curve-axis-labels"><span>START</span><span>PROGRESS</span><span>END</span></div>
               </div>
               <div className="curve-inspector">
                 <label className="curve-name-field">NAME<input value={selectedCurve.name} onChange={(event) => renameCurve(selectedCurve.id, event.target.value)} /></label>
-                <div className="curve-point-fields">{selectedCurve.points.map((point, index) => <label key={index}><span>{index < 2 ? 'P1' : 'P2'} · {index % 2 === 0 ? 'X' : 'Y'}</span><input type="number" min={index % 2 === 0 ? 0 : -2} max={index % 2 === 0 ? 1 : 3} step="0.01" value={point} onChange={(event) => updateCurvePoint(selectedCurve.id, index, Math.max(index % 2 === 0 ? 0 : -2, Math.min(index % 2 === 0 ? 1 : 3, Number(event.target.value))))} /></label>)}</div>
+                <label className="curve-name-field">TYPE<select value={selectedCurve.type} onChange={(event) => changeCurveType(selectedCurve.id, event.target.value as CurveResource['type'])}><option value="linear">Linear</option><option value="cubic-bezier">Cubic bezier</option><option value="spring">Spring</option></select></label>
+                {selectedCurve.type === 'cubic-bezier' && <div className="curve-point-fields">{selectedCurve.points.map((point, index) => <label key={index}><span>{index < 2 ? 'P1' : 'P2'} · {index % 2 === 0 ? 'X' : 'Y'}</span><input type="number" min={index % 2 === 0 ? 0 : -2} max={index % 2 === 0 ? 1 : 3} step="0.01" value={point} onChange={(event) => updateCurvePoint(selectedCurve.id, index, Math.max(index % 2 === 0 ? 0 : -2, Math.min(index % 2 === 0 ? 1 : 3, Number(event.target.value))))} /></label>)}</div>}
+                {selectedCurve.type === 'spring' && <div className="curve-point-fields spring-fields">{(['mass', 'stiffness', 'damping'] as const).map((key) => <label key={key}><span>{key.toUpperCase()}</span><input type="number" min={key === 'damping' ? 0 : 0.1} max={key === 'mass' ? 10 : 500} step="0.1" value={selectedCurve[key]} onChange={(event) => updateSpringCurve(selectedCurve, key, Math.max(key === 'damping' ? 0 : 0.1, Number(event.target.value)))} /></label>)}</div>}
+                <label className="curve-sampler"><span>SAMPLE</span><input type="range" min="0" max="1" step="0.01" value={curvePreviewProgress} onChange={(event) => setCurvePreviewProgress(Number(event.target.value))} /><output>{curvePreviewProgress.toFixed(2)} → {sampleCurveValue(selectedCurve, curvePreviewProgress).toFixed(3)}</output></label>
                 <div className="curve-reference"><span>REFERENCE ID</span><code>{selectedCurve.id}</code></div>
+                <div className="curve-reference"><span>REFERENCED IN</span><code>{curveReferences(selectedCurve.id).join(', ') || 'No literal sample references found'}</code></div>
                 <button className="tool-button curve-duplicate-action" onClick={() => duplicateCurve(selectedCurve.id)}><Copy size={13} />Duplicate curve</button>
               </div>
             </div>
@@ -523,17 +836,32 @@ function App() {
                 language={editorLanguage}
                 value={project.files[activeFile] ?? ''}
                 onChange={updateFile}
+                onMount={(editor) => {
+                  editorRef.current = editor
+                  editor.addAction({
+                    id: 'motion-workbench.save-and-apply',
+                    label: 'Save project and refresh preview',
+                    keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS],
+                    run: () => { void saveAndApply() },
+                  })
+                }}
                 theme={theme === 'dark' ? 'vs-dark' : 'vs'}
                 options={{ minimap: { enabled: false }, fontSize: 13, lineHeight: 21, fontFamily: 'Consolas, monospace', scrollBeyondLastLine: false, padding: { top: 16 }, automaticLayout: true, tabSize: 2, wordWrap: 'off', renderLineHighlight: 'all', overviewRulerBorder: false }}
               />
             </div>
           </div>}
           <div className="splitter" onPointerDown={dragSplit} role="separator" aria-label="Resize editor and preview" />
-          <div className="preview-column">
-            <div className="preview-panel">
-              <div className="panel-heading"><div className="heading-label"><span className="live-indicator" /><span>{project.manifest.projectType === 'html' ? 'PAGE PREVIEW' : 'CANVAS PREVIEW'}</span>{project.manifest.renderer.type === 'canvas2d' && <span className="dimensions">{project.manifest.renderer.width} × {project.manifest.renderer.height}</span>}</div><div className="preview-controls"><button className="icon-button" onClick={toggleRuntime} title={status === 'paused' ? 'Resume' : 'Pause'}>{status === 'paused' ? <Play size={14} /> : <Square size={13} />}</button><button className="icon-button" onClick={resetRuntime} title="Reset simulation"><RotateCcw size={14} /></button></div></div>
-              <div className={`canvas-stage ${previewReady ? 'has-preview' : ''} ${project.manifest.projectType === 'html' ? 'html-stage' : ''}`}>
-                {project.manifest.projectType === 'html' ? <iframe ref={iframeRef} title="HTML project preview" sandbox="allow-scripts" /> : <canvas ref={canvasRef} aria-label="Canvas2D animation preview" />}
+          <div className={`preview-column ${consoleOpen ? '' : 'console-collapsed'}`}>
+            <div className={`preview-panel ${previewFullscreen ? 'preview-fullscreen' : ''}`}>
+              <div className="panel-heading"><div className="heading-label"><span className="live-indicator" /><span>{project.manifest.projectType === 'html' ? 'PAGE PREVIEW' : 'CANVAS PREVIEW'}</span><span className="dimensions">{Math.round(previewBaseSize.width)} × {Math.round(previewBaseSize.height)}</span></div><div className="preview-controls">
+                {project.manifest.projectType === 'html' && <select className="viewport-select" aria-label="HTML viewport size" value={htmlViewport} onChange={(event) => setHtmlViewport(event.target.value)}><option value="responsive">Responsive</option><option value="1440x900">Desktop · 1440 × 900</option><option value="1024x768">Laptop · 1024 × 768</option><option value="768x1024">Tablet · 768 × 1024</option><option value="390x844">Mobile · 390 × 844</option></select>}
+                <select className="zoom-select" aria-label="Preview zoom" value={previewZoom} onChange={(event) => setPreviewZoom(event.target.value)}><option value="fit">Fit</option>{[25, 50, 75, 100, 125, 150, 200].map((zoom) => <option key={zoom} value={zoom.toString()}>{zoom}%</option>)}</select><span className="zoom-readout">{Math.round(displayedZoom * 100)}%</span>
+                <button className="icon-button" onClick={toggleRuntime} title={status === 'paused' ? 'Resume' : 'Pause'}>{status === 'paused' ? <Play size={14} /> : <Square size={13} />}</button><button className="icon-button" onClick={resetRuntime} title="Reset simulation"><RotateCcw size={14} /></button><button className="icon-button" onClick={() => setPreviewFullscreen((value) => !value)} title={previewFullscreen ? 'Exit expanded preview' : 'Expand preview'} aria-label={previewFullscreen ? 'Exit expanded preview' : 'Expand preview'}>{previewFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}</button>
+              </div></div>
+              <div ref={stageRef} className={`canvas-stage ${previewReady ? 'has-preview' : ''} ${project.manifest.projectType === 'html' ? 'html-stage' : ''}`}>
+                <div className="preview-frame" style={previewFrameStyle}><div className="preview-content" style={previewContentStyle}>
+                  {project.manifest.projectType === 'html' ? <iframe ref={iframeRef} title="HTML project preview" sandbox="allow-scripts" /> : <canvas ref={canvasRef} aria-label="Canvas2D animation preview" />}
+                </div></div>
                 <div className="canvas-empty"><Activity size={17} /><span>Apply code to start the preview</span></div>
               </div>
               <div className="preview-footer"><span>{status === 'running' ? 'LIVE' : status.toUpperCase()}</span><span>{project.manifest.projectType === 'html' ? 'HTML / CSS' : 'CANVAS2D'}</span></div>
@@ -548,6 +876,7 @@ function App() {
 
       <footer className="statusbar"><div><span className={`status-dot ${status}`} />{status === 'running' ? 'Running' : status === 'paused' ? 'Paused' : status === 'error' ? 'Build failed' : 'Idle'}<span className="status-divider" />{activeFile}</div><div><span>{project.manifest.projectType === 'html' ? 'HTML / CSS' : 'Canvas2D'}</span><span className="status-divider" /><span>Project format v1</span></div></footer>
       {newProjectOpen && <div className="dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setNewProjectOpen(false) }}><section className="new-project-dialog" role="dialog" aria-modal="true" aria-labelledby="new-project-title"><div className="dialog-heading"><div><span className="dialog-eyebrow">START A STUDY</span><h2 id="new-project-title">New project</h2></div><button className="icon-button" onClick={() => setNewProjectOpen(false)} title="Close"><X size={16} /></button></div><div className="project-choices"><button className="project-choice" onClick={() => createProject('canvas2d')}><span className="choice-icon canvas-choice"><Activity size={18} /></span><span><strong>Canvas2D</strong><small>TypeScript scene with a frame loop</small></span><ChevronRight size={16} /></button><button className="project-choice" onClick={() => createProject('html')}><span className="choice-icon html-choice"><FileCode2 size={18} /></span><span><strong>HTML + CSS</strong><small>A page for small visual experiments</small></span><ChevronRight size={16} /></button></div></section></div>}
+      {pendingCurveDelete && <div className="dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setPendingCurveDelete(null) }}><section className="new-project-dialog curve-delete-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-curve-title"><div className="dialog-heading"><div><span className="dialog-eyebrow">CURVE RESOURCE</span><h2 id="delete-curve-title">Delete {project.manifest.curves?.find((curve) => curve.id === pendingCurveDelete)?.name}</h2></div><button className="icon-button" onClick={() => setPendingCurveDelete(null)} title="Close"><X size={16} /></button></div>{curveReferences(pendingCurveDelete).length ? <><p>This curve is sampled in <code>{curveReferences(pendingCurveDelete).join(', ')}</code>. Choose a replacement before deleting it.</p><label>REPLACE WITH<select value={curveReplacementId} onChange={(event) => setCurveReplacementId(event.target.value)}>{(project.manifest.curves ?? []).filter((curve) => curve.id !== pendingCurveDelete).map((curve) => <option key={curve.id} value={curve.id}>{curve.name} · {curve.id}</option>)}</select></label></> : <p>This curve has no literal <code>curves.sample(...)</code> references in project source.</p>}<div className="draft-actions"><button className="tool-button" onClick={() => setPendingCurveDelete(null)}>Cancel</button><button className="tool-button danger-action" disabled={curveReferences(pendingCurveDelete).length > 0 && !curveReplacementId} onClick={() => void confirmRemoveCurve()}><Trash2 size={13} />Delete curve</button></div></section></div>}
       {draftPrompt && <div className="dialog-backdrop"><section className="new-project-dialog draft-dialog" role="dialog" aria-modal="true" aria-labelledby="draft-title"><div className="dialog-heading"><div><span className="dialog-eyebrow">UNSAVED WORK</span><h2 id="draft-title">Recover this draft?</h2></div></div><p>{draftPrompt.project.manifest.name} · {new Date(draftPrompt.savedAt).toLocaleString()}</p><div className="draft-actions"><button className="tool-button" onClick={discardDraft}>Discard</button><button className="tool-button primary-action" onClick={recoverDraft}>Recover draft</button></div></section></div>}
     </main>
   )
