@@ -1,0 +1,153 @@
+/* ── the goo's defs hold nothing you can see ────────────────
+   `useGoo` renders an <svg> carrying a <defs> and nothing
+   else, and an <svg> with no dimensions is a replaced element:
+   the browser gives it the default 300x150 and puts it in the
+   flow. Every block that mounts one has been carrying an
+   invisible 300x150 box ever since — harmless in the fixed-size
+   relative stages that host most of them, and not harmless in
+   a flex column, where it over-subscribed the container and
+   shrank the palette's swatch row from 132 to 64.
+
+   Nothing inside a <defs> is rendered, so taking the element
+   out of flow entirely costs nothing and is what it always
+   wanted. */
+.liq-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;}
+
+/* ══ Palette ════════════════════════════════════════════════
+   A filled bar of colours and the refresh at its end.
+   Everything that moves is written from one number in
+   Palette.tsx; what is here is the shell. */
+.pal {
+  font-family: var(--font-ui);
+  /* two pills, and the gap between them is written inline
+     alongside the padding inside them — the same number in
+     both places on purpose */
+  display: flex;
+  align-items: stretch;}
+
+/* ── the slab ───────────────────────────────────────────────
+   `--fill-slab`, which is the Fill control's own token: white
+   when the block is filled light and `--slab-dark` when it is
+   filled dark. It was `--slab` — the filled-block pair — which
+   is near-black in light, and a palette wants a white card to
+   sit on far more than it wants a black one. The fallback is
+   `--card` for any mount outside a stage that sets the
+   attribute. */
+.pal-slab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--fill-slab, var(--card));}
+
+/* the hairline is the Stroke control's to give, the way it is
+   for every other block — a spread shadow rather than a
+   border, so it costs the slab no layout */
+[data-stroke="on"] .pal-slab {
+  box-shadow: 0 0 0 1px var(--pane-edge);}
+
+/* ── the tool pill ──────────────────────────────────────────
+   No growing; its width comes from the component. And IT is
+   what sinks under a press, not the button inside it — the
+   thing being pressed is the pill, a button that shrank inside
+   a pill that did not would read as two objects where there is
+   one. Same curve the rest of the bench presses on. */
+.pal-tool {
+  flex: none;
+  transition: scale 160ms cubic-bezier(0.22, 1, 0.36, 1);}
+
+.pal-tool:has(.pal-go:active) {
+  scale: 0.96;}
+
+.pal-bar {
+  position: relative;
+  flex: none;
+  /* NO clip and no corner. Each swatch carries its own radius
+     now that there are gaps between them, so there is nothing
+     for the bar to shape — and a bar that clipped would cut
+     off the overshoot on the way back, which is the part of
+     the motion worth having. */}
+
+.pal-blobs {
+  position: absolute;
+  inset: 0;}
+
+.pal-seg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  /* every mode is one solid colour at every frame now, so
+     there is nothing inside to clip — and the swatch has to be
+     free to bulge past its own slot, which is what the
+     overshoot on the way back is */
+  /* transform and width are written per frame — no transition,
+     or the easing and the tween re-interpolate against each
+     other and what you see is the transition rather than the
+     move */}
+
+/* the height is written per frame too — `bounce` and `orb`
+   both lose some of it — so the rule cannot claim 100% */
+
+/* ── the refresh ────────────────────────────────────────────
+   Width, height and corner all come from the component: it
+   wears the swatch's own radius, so the Corner knob moves it
+   with everything else. NO CHROME AT ALL, at rest or on
+   hover — on whatever ink the fill asks for. */
+.pal-go {
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--fill-on, var(--ink-2));
+  cursor: pointer;
+  transition: color 160ms ease;}
+
+/* ── hover lightens the glyph, it does not fill the box ─────
+   A grey pad appearing behind the icon is a second shape
+   arriving on a block whose whole subject is shapes, and it
+   was landing inside a pill that already reads as a button —
+   chrome drawn on top of chrome. The ink easing off says the
+   same thing with nothing new on screen.
+
+   A LIGHTER COLOUR, NOT A FADED ONE. Alpha would have been
+   fewer characters and it is the wrong tool: a translucent
+   glyph lets whatever is behind it through, so the icon takes
+   the slab's tint at rest and something else the moment this
+   block sits on any other ground. `color-mix` resolves to one
+   opaque colour — the fill's own ink walked 45% toward the
+   fill's own slab — so it is a grey that was chosen rather
+   than a black that is partly missing.
+
+   And it reads in both fills for free, because both ends of
+   the mix are the Fill control's tokens: on white the black
+   goes to a lighter black, on near-black the white goes to a
+   softer white. Same gesture, no second rule. */
+.pal-go:hover {
+  color: color-mix(in srgb, var(--fill-on, var(--ink-2)) 55%, var(--fill-slab, var(--card)));}
+
+.pal-go:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--fill-slab, var(--card)), 0 0 0 4px rgba(var(--fill-on-rgb, var(--ink-rgb)), 0.45);}
+
+/* ── the glyph turns, and only one way ──────────────────────
+   A half turn per press, accumulated — so it never unwinds.
+   A refresh icon that spun back would be saying undo. */
+.pal-go svg {
+  transition: rotate 600ms cubic-bezier(0.22, 1, 0.36, 1);}
+
+@media (prefers-reduced-motion: reduce) {
+  .pal-go, .pal-go svg, .pal-tool { transition-duration: 160ms; }
+}
+
+/* nothing inside a <defs> renders, and an <svg> with no
+   dimensions is otherwise a 300x150 box in the flow — the same
+   fault .liq-defs had */
+.cow-defs {
+  position: absolute;
+  width: 0;
+  height: 0;}

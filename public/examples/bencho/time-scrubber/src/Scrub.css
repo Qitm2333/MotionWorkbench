@@ -1,0 +1,114 @@
+/* ══ Time scrubber ═══════════════════════════════════════ */
+.tms {
+  width: 300px;
+  padding: 20px 20px 16px;
+  border-radius: var(--tms-r);
+  background: var(--fill-slab, var(--card));
+  color: var(--fill-on, var(--ink));
+  font-family: var(--font-ui);
+  user-select: none;
+  -webkit-user-select: none;}
+
+[data-stroke="on"] .tms { box-shadow: 0 0 0 1px var(--pane-edge); }
+
+.tms-read {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;}
+
+.tms-time {
+  display: inline-flex;
+  font-size: 30px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;}
+
+/* a digit rolls through a window that FADES rather than clips.
+   Each cell is 1.5em for a 1em line, the digit centred in it, so
+   at rest the neighbours sit wholly outside the window; the mask
+   takes the top and bottom quarter-em to nothing, so a digit on
+   the move leaves and arrives through a fade, never an edge. The
+   negative margin keeps the line box at 1em. */
+.tms-col {
+  display: inline-block;
+  height: 1.5em;
+  margin: -0.25em 0;
+  overflow: hidden;
+  mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent);}
+
+.tms-strip {
+  display: flex;
+  flex-direction: column;
+  transition: transform 220ms cubic-bezier(0.24, 1.34, 0.38, 1);}
+
+.tms-strip > span { height: 1.5em; line-height: 1.5em; }
+
+/* and it smears a little while it rolls */
+.tms-strip[data-flip="a"] { animation: tms-blur-a 260ms ease-out; }
+
+.tms-strip[data-flip="b"] { animation: tms-blur-b 260ms ease-out; }
+
+.tms-colon { padding: 0 0.02em; }
+
+.tms-mer {
+  font-size: 14px;
+  font-weight: 500;
+  color: color-mix(in srgb, var(--fill-on, #17181a) 52%, var(--fill-slab, #ffffff));
+  letter-spacing: -0.01em;}
+
+.tms-ruler {
+  position: relative;
+  height: 58px;
+  margin-top: 16px;
+  cursor: grab;
+  touch-action: pan-y;
+  outline: none;
+  /* the ruler fades out at both ends, like a wheel turning away */
+  mask-image: linear-gradient(90deg, transparent, #000 22%, #000 78%, transparent);}
+
+.tms-ruler:active { cursor: grabbing; }
+
+.tms-ruler:focus-visible { box-shadow: inset 0 0 0 2px var(--signal, #2231dd); border-radius: 10px; }
+
+.tms-track { position: absolute; left: 50%; top: 0; bottom: 0; }
+
+.tms-tick {
+  position: absolute;
+  left: -1px;
+  top: 8px;
+  width: 2px;
+  height: 10px;
+  border-radius: 1px;
+  background: var(--fill-on, var(--ink));
+  transform-origin: 50% 0;}
+
+.tms-tick[data-kind="quarter"] { height: 17px; }
+
+.tms-tick[data-kind="hour"] { height: 25px; }
+
+.tms-hour {
+  position: absolute;
+  left: 0;
+  top: 38px;
+  font-size: 11px;
+  font-weight: 400;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--fill-on, #17181a) 52%, var(--fill-slab, #ffffff));
+  letter-spacing: 0em;}
+
+/* the fixed mark the ruler runs under */
+.tms-mark {
+  position: absolute;
+  left: 50%;
+  top: 2px;
+  width: 3px;
+  height: 32px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: #e5484d;}
+
+@keyframes tms-blur-a { from { filter: blur(2px); } to { filter: blur(0); } }
+
+@keyframes tms-blur-b { from { filter: blur(2px); } to { filter: blur(0); } }

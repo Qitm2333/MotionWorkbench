@@ -1,0 +1,96 @@
+/* ══ Step player ═══════════════════════════════════════════
+   lab/StepPlayer.tsx. Two pills and a line under them, on the
+   Palette's pattern: the slab is the Fill control's own token
+   and the hairline is Stroke's to give. Everything that moves
+   is written inline by the component; nothing here carries a
+   transition on a thing that moves. */
+.spl {
+  font-family: var(--font-ui);
+  /* positioned so the canvas's grab halo does not paint over
+     the play button — see the note on .gen */
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;}
+
+.spl-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;}
+
+.spl-slab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--fill-slab, var(--card));}
+
+[data-stroke="on"] .spl-slab {
+  box-shadow: 0 0 0 1px var(--pane-edge);}
+
+.spl-track {
+  position: relative;
+  flex: none;}
+
+/* one solid grey, mixed rather than an alpha, so a dot the
+   wake stretches over its neighbour does not darken where the
+   two overlap */
+.spl-dot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fill-on, var(--ink)) 16%, var(--fill-slab, var(--card)));}
+
+/* the dot is also the button, and it is a bigger target than
+   it looks: an 8px circle is an 8px target */
+.spl-dot {
+  padding: 0;
+  border: 0;
+  cursor: pointer;}
+
+.spl-dot::after {
+  content: "";
+  position: absolute;
+  inset: -12px -4px;}
+
+.spl-dot:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--fill-slab, var(--card)), 0 0 0 4px rgba(var(--fill-on-rgb, var(--ink-rgb)), 0.45);}
+
+.spl-ink {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--fill-on, var(--ink));}
+
+/* the button pill sinks under a press, not the glyph in it —
+   the Palette's rule */
+.spl-tool {
+  flex: none;
+  transition: scale 160ms cubic-bezier(0.22, 1, 0.36, 1);}
+
+.spl-tool:has(.spl-go:active) { scale: 0.96; }
+
+.spl-go {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: var(--fill-on, var(--ink-2));
+  cursor: pointer;
+  transition: color 160ms ease;}
+
+.spl-go:hover {
+  color: color-mix(in srgb, var(--fill-on, var(--ink-2)) 55%, var(--fill-slab, var(--card)));}
+
+.spl-go:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--fill-slab, var(--card)), 0 0 0 4px rgba(var(--fill-on-rgb, var(--ink-rgb)), 0.45);}

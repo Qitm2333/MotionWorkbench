@@ -5,11 +5,11 @@ export type ProjectManifest = {
   formatVersion: 1
   name: string
   entry: string
-  projectType: 'canvas2d' | 'html'
-  renderer: { type: 'canvas2d'; width: number; height: number; background: string } | { type: 'html' }
+  projectType: 'canvas2d' | 'html' | 'react'
+  renderer: { type: 'canvas2d'; width: number; height: number; background: string } | { type: 'html' } | { type: 'react' }
   sourceFiles?: string[]
   assetFiles?: string[]
-  dependencies?: { three: '0.180.0' }
+  dependencies?: { three?: '0.180.0'; react?: '19.3.1'; 'framer-motion'?: '13.5.1'; 'lucide-react'?: '1.60.0'; 'liquid-gooey'?: '0.2.2' }
   parameterValues?: Record<string, number | boolean | string>
   curves?: CurveResource[]
 }
@@ -240,6 +240,65 @@ export const starterHtmlProject: Project = {
   },
 }
 
+export const starterReactProject: Project = {
+  manifest: {
+    formatVersion: 1,
+    name: 'React motion study',
+    entry: 'index.html',
+    projectType: 'react',
+    renderer: { type: 'react' },
+    dependencies: { react: '19.3.1' },
+  },
+  files: {
+    'index.html': `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>React motion study</title>
+  <script type="module" src="./src/main.tsx"></script>
+</head>
+<body>
+  <div id="root"></div>
+</body>
+</html>
+`,
+    'src/main.tsx': `import { createRoot } from 'react-dom/client'
+import { App } from './App'
+
+const root = createRoot(document.getElementById('root')!)
+root.render(<App />)
+
+if (import.meta.hot) import.meta.hot.dispose(() => root.unmount())
+`,
+    'src/App.tsx': `import { useEffect, useState } from 'react'
+import './app.css'
+
+export function App() {
+  const [expanded, setExpanded] = useState(false)
+  useEffect(() => () => setExpanded(false), [])
+
+  return <main className="study">
+    <button className={expanded ? 'tile expanded' : 'tile'} onClick={() => setExpanded((value) => !value)}>
+      <span>{expanded ? 'Motion in progress' : 'Open the motion study'}</span>
+      <i aria-hidden="true" />
+    </button>
+    <p>React + TypeScript · click to explore</p>
+  </main>
+}
+`,
+    'src/app.css': `.study { min-height: 100vh; display: grid; place-content: center; justify-items: center; gap: 18px; color: #f2f4f6; background: #202124; font: 14px Consolas, monospace; }
+.study p { color: #a9adb2; }
+.tile { position: relative; width: 280px; height: 180px; overflow: hidden; border: 1px solid #555b64; border-radius: 8px; color: inherit; background: #30343a; cursor: pointer; }
+.tile i { position: absolute; inset: 55px 112px; border-radius: 50%; background: #72a7e8; transition: transform 500ms cubic-bezier(.2,.8,.2,1), border-radius 500ms; }
+.tile.expanded i { transform: scale(2.7); border-radius: 32%; }
+.tile span { position: relative; z-index: 1; }
+`,
+    'src/workbench.d.ts': `interface ImportMeta { hot?: { dispose(callback: () => void): void } }
+`,
+  },
+}
+
 export const normalizeProjectPath = (path: string) => {
   if (!path || path.startsWith('/') || /^[A-Za-z]:[\\/]/.test(path)) throw new Error(`Project path must be relative: ${path}`)
   const parts: string[] = []
@@ -280,7 +339,7 @@ export function validateProject(value: unknown): Project {
   const manifest = value.manifest
   if (manifest.formatVersion !== 1) throw new Error(`Unsupported project format version: ${String(manifest.formatVersion)}`)
   if (typeof manifest.name !== 'string' || !manifest.name.trim() || manifest.name.length > 120) throw new Error('project.json has an invalid project name')
-  if (manifest.projectType !== 'canvas2d' && manifest.projectType !== 'html') throw new Error('project.json has an invalid project type')
+  if (manifest.projectType !== 'canvas2d' && manifest.projectType !== 'html' && manifest.projectType !== 'react') throw new Error('project.json has an invalid project type')
   if (!isRecord(manifest.renderer) || manifest.renderer.type !== manifest.projectType) throw new Error('project.json renderer does not match the project type')
   if (manifest.projectType === 'canvas2d') {
     if (typeof manifest.renderer.width !== 'number' || !Number.isFinite(manifest.renderer.width) || manifest.renderer.width <= 0 || typeof manifest.renderer.height !== 'number' || !Number.isFinite(manifest.renderer.height) || manifest.renderer.height <= 0 || typeof manifest.renderer.background !== 'string') throw new Error('Canvas2D renderer settings are invalid')
@@ -310,8 +369,11 @@ export function validateProject(value: unknown): Project {
     if (!isRecord(manifest.parameterValues) || Object.entries(manifest.parameterValues).some(([id, item]) => !/^[A-Za-z][\w-]{0,63}$/.test(id) || !['string', 'number', 'boolean'].includes(typeof item) || (typeof item === 'number' && !Number.isFinite(item)))) throw new Error('project.json has invalid parameter overrides')
   }
   const curveIds = new Set<string>()
-  if (manifest.dependencies !== undefined && (!isRecord(manifest.dependencies) || Object.keys(manifest.dependencies).some((key) => key !== 'three') || manifest.dependencies.three !== '0.180.0')) throw new Error('Only the bundled three@0.180.0 dependency is supported')
-  if (manifest.dependencies && manifest.projectType !== 'html') throw new Error('Bundled dependencies require an HTML project')
+  const supportedDependencies: Record<string, string> = { three: '0.180.0', react: '19.3.1', 'framer-motion': '13.5.1', 'lucide-react': '1.60.0', 'liquid-gooey': '0.2.2' }
+  if (manifest.dependencies !== undefined && (!isRecord(manifest.dependencies) || Object.entries(manifest.dependencies).some(([key, version]) => supportedDependencies[key] !== version))) throw new Error('Project dependencies must use supported bundled versions: three@0.180.0, react@19.3.1, framer-motion@13.5.1, lucide-react@1.60.0, liquid-gooey@0.2.2')
+  if (manifest.dependencies?.react && manifest.projectType !== 'react') throw new Error('The bundled React dependency requires a React project')
+  if (manifest.dependencies?.three && !['html', 'react'].includes(manifest.projectType)) throw new Error('The bundled Three.js dependency requires an HTML or React project')
+  if (manifest.dependencies && Object.keys(manifest.dependencies).some((key) => key !== 'three') && manifest.projectType !== 'react') throw new Error('React runtime dependencies require a React project')
   const assets: Record<string, ProjectAsset> = {}
   if (value.assets !== undefined) {
     if (!isRecord(value.assets)) throw new Error('Project assets must be a path map')
@@ -432,9 +494,9 @@ export function isProjectSource(path: string) {
 }
 
 export function isProjectEntry(path: string, type: ProjectManifest['projectType']) {
-  return type === 'html' ? /\.html?$/i.test(path) : /\.(?:[cm]?[jt]sx?)$/i.test(path)
+  return type === 'canvas2d' ? /\.(?:[cm]?[jt]sx?)$/i.test(path) : /\.html?$/i.test(path)
 }
 
 export function isAllowedProjectFile(path: string, type: ProjectManifest['projectType']) {
-  return type === 'html' ? /\.(?:html?|css|[cm]?js)$/i.test(path) : /\.(?:[cm]?[jt]sx?)$/i.test(path)
+  return type === 'canvas2d' ? /\.(?:[cm]?[jt]sx?)$/i.test(path) : type === 'react' ? /\.(?:html?|css|[cm]?[jt]sx?)$/i.test(path) : /\.(?:html?|css|[cm]?js)$/i.test(path)
 }

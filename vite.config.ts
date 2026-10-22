@@ -1,6 +1,7 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import type { Plugin } from 'vite'
+import { build as bundle } from 'esbuild'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -37,9 +38,49 @@ function threeRuntime() {
   } satisfies Plugin
 }
 
+function reactRuntime() {
+  let runtime = ''
+  const url = '/vendor/react/19.3.1/runtime.js'
+  const buildRuntime = async () => {
+    if (!runtime) {
+      const result = await bundle({
+        entryPoints: [join(import.meta.dirname, 'src/reactSandboxRuntime.ts')],
+        bundle: true,
+        format: 'iife',
+        target: 'es2022',
+        minify: true,
+        write: false,
+        legalComments: 'none',
+      })
+      runtime = result.outputFiles[0].text
+    }
+    return runtime
+  }
+  return {
+    name: 'bundled-react-runtime',
+    async configureServer(server: import('vite').ViteDevServer) {
+      server.middlewares.use(async (req, res, next) => {
+        if ((req.url ?? '').split('?')[0] !== url) return next()
+        try {
+          res.setHeader('Access-Control-Allow-Origin', '*')
+          res.setHeader('Content-Type', 'text/javascript')
+          res.end(await buildRuntime())
+        } catch (error) {
+          res.writeHead(500).end(error instanceof Error ? error.message : String(error))
+        }
+      })
+    },
+    async generateBundle() {
+      this.emitFile({ type: 'asset', fileName: url.slice(1), source: await buildRuntime() })
+      const license = readFileSync(join(import.meta.dirname, 'node_modules/react/LICENSE'), 'utf8')
+      this.emitFile({ type: 'asset', fileName: 'vendor/react/19.3.1/LICENSE', source: license })
+    },
+  } satisfies Plugin
+}
+
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), threeRuntime()],
+  plugins: [react(), threeRuntime(), reactRuntime()],
   preview: { headers: { 'Access-Control-Allow-Origin': '*' } },
   // GitHub Pages serves project sites below /<repository>/; local dev stays at `/`.
   base: process.env.BASE_PATH || '/',

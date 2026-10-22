@@ -1,0 +1,14 @@
+/* ══ Particles ═════════════════════════════════════════════
+   lab/Particles.tsx. The dots are drawn on a canvas in the
+   element's own `color`, so the ink is set here and the theme
+   carries it. */
+.ptc {
+  position: relative;
+  display: grid;
+  place-items: center;}
+
+.ptc-canvas {
+  display: block;
+  color: var(--fill-on, var(--ink));
+  cursor: crosshair;
+  touch-action: none;}

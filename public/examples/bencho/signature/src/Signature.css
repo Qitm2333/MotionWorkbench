@@ -1,0 +1,143 @@
+/* ══ Signature pad ════════════════════════════════════════ */
+.sig-frame { display: grid; place-items: center; }
+
+.sig {
+  position: relative;
+  flex: none;
+  /* folding into the pill, and opening back out: one long
+     quint-out glide, no overshoot — a card this size bouncing
+     read as a jolt, not a landing */
+  transition:
+    width 600ms cubic-bezier(0.22, 1, 0.36, 1),
+    height 600ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-radius 600ms cubic-bezier(0.22, 1, 0.36, 1);
+  border-radius: var(--r);
+  overflow: hidden;
+  background: var(--fill-slab, var(--card));
+  color: var(--fill-on, var(--ink));
+  font-family: var(--font-ui);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: crosshair;}
+
+[data-stroke="on"] .sig { box-shadow: inset 0 0 0 1px var(--pane-edge); }
+
+.sig-ink { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+
+.sig[data-ink="Blue"] .sig-ink { color: #2446d8; }
+
+[data-fill="dark"] .sig[data-ink="Blue"] .sig-ink { color: #7d95ff; }
+
+.sig-line {
+  position: absolute;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.16;
+  pointer-events: none;}
+
+.sig-hint {
+  position: absolute;
+  top: 140px;
+  font-size: 12px;
+  font-weight: 400;
+  pointer-events: none;
+  letter-spacing: 0em;}
+
+.sig-hint {
+  left: 0;
+  right: 0;
+  text-align: center;
+  opacity: 0.38;
+  transition: opacity 220ms ease;}
+
+.sig[data-inked] .sig-hint { opacity: 0; }
+
+/* signed: the signature shrinks WITH the card, on the same
+   curve, into the middle of the pill — and fades as it goes, so
+   by the time it would be too small to read it is gone */
+.sig[data-signed] { cursor: default; }
+
+.sig-face {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 300px;
+  height: 180px;
+  translate: -50% -50%;
+  transition: scale 600ms cubic-bezier(0.22, 1, 0.36, 1), opacity 420ms ease 220ms;}
+
+.sig[data-signed] .sig-face {
+  scale: 0.35;
+  opacity: 0;
+  transition: scale 600ms cubic-bezier(0.22, 1, 0.36, 1), opacity 420ms ease 160ms;}
+
+.sig[data-signed] :is(.sig-clear, .sig-hint) { opacity: 0; transition: opacity 160ms ease; }
+
+.sig-said {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;}
+
+.sig-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+  width: 100%;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+  /* in once the pill has nearly arrived */
+  animation: sig-said 320ms ease 420ms both;
+  letter-spacing: 0em;}
+
+.sig-pill:focus-visible { outline: 2px solid var(--signal, #2231dd); outline-offset: 2px; border-radius: 999px; }
+
+.sig-check {
+  color: #1f9d55;
+  animation: sig-check 420ms cubic-bezier(0.3, 1.6, 0.4, 1) 460ms both;}
+
+.sig-clear {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--inner);
+  background: color-mix(in srgb, currentColor 7%, transparent);
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  opacity: 0;
+  scale: 0.9;
+  pointer-events: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 160ms ease, scale 220ms cubic-bezier(0.24, 1.34, 0.38, 1), background 160ms ease;
+  letter-spacing: 0em;}
+
+.sig[data-inked] .sig-clear { opacity: 1; scale: 1; pointer-events: auto; }
+
+.sig-clear:hover { background: color-mix(in srgb, currentColor 12%, transparent); }
+
+.sig-clear:active { scale: 0.96; }
+
+.sig-clear:focus-visible { outline: 2px solid var(--signal, #2231dd); outline-offset: 2px; }
+
+@keyframes sig-said { from { opacity: 0; } }
+
+@keyframes sig-check { from { opacity: 0; scale: 0.3; rotate: -20deg; } }

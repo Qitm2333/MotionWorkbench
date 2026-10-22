@@ -1,0 +1,170 @@
+/* ══ Generate ══════════════════════════════════════════════
+   lab/Generate.tsx. A picture card and a pill under it. The
+   card is a photograph edge to edge, so it answers neither
+   Fill nor Stroke; the pill is the Step player's slab and
+   answers both. */
+.gen {
+  font-family: var(--font-ui);
+  /* POSITIONED, and it is load-bearing on the canvas: a board's
+     grab halo is a positioned ::before, and a positioned layer
+     paints over every non-positioned sibling after it — so the
+     button pill, which is not positioned, sat UNDER the halo
+     and never heard a click. Making the root positioned puts
+     the whole block above it in paint order. */
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;}
+
+.gen-card {
+  position: relative;
+  width: 270px;
+  /* 330, down from the picture's own 360 (3:4). The print is
+     `cover`, so the frame trims a sliver of paper top and
+     bottom rather than squashing the flower */
+  height: 330px;
+  border-radius: 20px;
+  overflow: hidden;
+  /* white, the blank page. The print's own paper is a warm grey,
+     and the run carries the card from one to the other: the
+     haze fades up over the white, so the page greys as the
+     picture arrives rather than starting grey. */
+  background: var(--fill-slab, #ffffff);
+  /* the corner clips a canvas and an image, and Safari leaks
+     both past a radius without a layer of its own */
+  isolation: isolate;}
+
+.gen-canvas,
+.gen-print {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;}
+
+.gen-print {
+  object-fit: cover;
+  user-select: none;
+  -webkit-user-drag: none;}
+
+/* the filter's defs, out of the flow — an svg with no size is
+   300x150 of layout otherwise */
+.gen-defs {
+  position: absolute;
+  width: 0;
+  height: 0;}
+
+[data-stroke="on"] .gen-card {
+  box-shadow: 0 0 0 1px var(--pane-edge);}
+
+/* ── the button, in the middle of the frame ─────────────────
+   Light grey on the white page. It answers the pointer by
+   size only — a little on hover, more on the press — and
+   leaves by shrinking and fading when the run starts. Every
+   colour here is the Fill control's, so Dark gives a dark
+   frame, a lifted pill and light ink. */
+.gen-go {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 42px;
+  /* even now there is no icon on the left to balance */
+  padding: 0 20px;
+  border: 0;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--fill-on, #17181a) 6%, var(--fill-slab, #ffffff));
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--fill-on, #17181a);
+  cursor: pointer;
+  translate: -50% -50%;
+  transition: opacity 220ms ease, scale 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  letter-spacing: -0.01em;}
+
+.gen-go:hover:not(:disabled) { scale: 0.97; }
+
+.gen-go:active:not(:disabled) { scale: 0.96; transition-duration: 160ms; }
+
+.gen-go:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--fill-slab, #ffffff), 0 0 0 4px rgba(var(--fill-on-rgb, 23, 24, 26), 0.45);}
+
+/* gone while a picture is being made */
+.gen[data-loading="true"] .gen-go {
+  opacity: 0;
+  scale: 0.9;
+  pointer-events: none;}
+
+/* made: out of the way until the pointer is on the picture,
+   and WHITE over the print — the grey that sits quietly on a
+   blank page reads as a smudge on a grey halftone */
+.gen[data-made="true"]:not([data-loading="true"]) .gen-go {
+  opacity: 0;
+  background: var(--fill-slab, #ffffff);}
+
+.gen[data-made="true"]:not([data-loading="true"]) .gen-card:hover .gen-go,
+.gen[data-made="true"]:not([data-loading="true"]) .gen-go:focus-visible {
+  opacity: 1;}
+
+/* ── the count ──────────────────────────────────────────────
+   A small pill in the bottom-left corner, only while a run is
+   going (and for the beat it holds at 100). */
+.gen-pct {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fill-slab, #ffffff) 80%, transparent);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--fill-on, #17181a);
+  font-variant-numeric: tabular-nums;
+  opacity: 0;
+  translate: 0 4px;
+  transition: opacity 220ms ease, translate 220ms ease;
+  pointer-events: none;
+  letter-spacing: 0em;}
+
+.gen[data-loading="true"] .gen-pct {
+  opacity: 1;
+  translate: 0 0;}
+
+@media (prefers-reduced-motion: reduce) {
+  .gen-go,
+    .gen-pct { transition-duration: 160ms; }
+}
+
+/* ══ One-time code ═════════════════════════════════════════
+   lab/Otp.tsx. Everything that moves is written inline; what
+   is here is the material. Positioned at the root so the
+   canvas's grab halo does not paint over the field — see the
+   note on .gen. */
+.otp {
+  position: relative;
+  font-family: var(--font-ui);
+  display: grid;
+  place-items: center;}
+
+/* ══ Label input ═══════════════════════════════════════════
+   lab/LabelInput.tsx. Positioned at the root for the canvas
+   halo — see the note on .gen. */
+.lbi {
+  position: relative;
+  font-family: var(--font-ui);
+  display: grid;
+  place-items: center;
+  /* room above the field for the lifted label */
+  padding-top: 12px;}

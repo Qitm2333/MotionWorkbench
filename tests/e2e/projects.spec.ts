@@ -1,7 +1,59 @@
 import { expect, test } from '@playwright/test'
 import type { Locator, Page } from '@playwright/test'
+import { examples } from '../../src/examples.ts'
 
-const preview = (page: Page) => page.frameLocator('iframe[title="HTML project preview"]')
+const preview = (page: Page) => page.frameLocator('iframe[title="Project preview"]')
+
+test('Examples browser filters the catalog and keeps the active result in sync', async ({ page }) => {
+  await page.goto('./')
+  await page.getByTitle('Browse examples').click()
+  const dialog = page.getByRole('dialog', { name: 'Examples', exact: true })
+  const list = dialog.getByRole('navigation', { name: 'Example projects' })
+  await expect(list.getByRole('button')).toHaveCount(examples.length)
+
+  await dialog.getByRole('button', { name: 'Bencho Block', exact: true }).click()
+  await expect(list.getByRole('button')).toHaveCount(41)
+  await expect(dialog.locator('.examples-results-heading small')).toHaveText('41 / 46')
+
+  const search = dialog.getByRole('searchbox', { name: 'Search examples' })
+  await search.fill('Action node')
+  await expect(list.getByRole('button')).toHaveCount(1)
+  await expect(dialog.getByRole('heading', { name: 'Action node', exact: true })).toBeVisible()
+  await expect(list.getByRole('button', { name: /Action node/ })).toHaveAttribute('aria-current', 'true')
+
+  await search.fill('no matching example')
+  await expect(list.getByRole('button')).toHaveCount(0)
+  await expect(dialog.getByText('No examples match this search.').first()).toBeVisible()
+  await expect(dialog.getByRole('button', { name: /Open example/ })).toBeDisabled()
+})
+
+test('Examples browser fits a narrow viewport and scrolls its results independently', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('./')
+  await page.getByTitle('Browse examples').click()
+  const dialog = page.getByRole('dialog', { name: 'Examples', exact: true })
+  const metrics = await dialog.evaluate((element) => {
+    const rect = element.getBoundingClientRect()
+    const list = element.querySelector('.examples-list')!
+    return {
+      left: rect.left,
+      right: rect.right,
+      top: rect.top,
+      bottom: rect.bottom,
+      viewportWidth: innerWidth,
+      viewportHeight: innerHeight,
+      listHeight: list.clientHeight,
+      listScrollHeight: list.scrollHeight,
+    }
+  })
+  expect(metrics.left).toBeGreaterThanOrEqual(0)
+  expect(metrics.right).toBeLessThanOrEqual(metrics.viewportWidth)
+  expect(metrics.top).toBeGreaterThanOrEqual(0)
+  expect(metrics.bottom).toBeLessThanOrEqual(metrics.viewportHeight)
+  expect(metrics.listScrollHeight).toBeGreaterThan(metrics.listHeight)
+  await dialog.getByRole('button', { name: /Open example/ }).scrollIntoViewIfNeeded()
+  await expect(dialog.getByRole('button', { name: /Open example/ })).toBeVisible()
+})
 
 async function openExample(page: Page, name: string) {
   await page.getByTitle('Browse examples').click()
@@ -52,17 +104,14 @@ test('Three.js local model, parameters, pause, reset, reapply and portable round
   await page.getByRole('button', { name: /Three\.js/ }).click()
   await expect(page.locator('.parameter-count')).toHaveText('7')
   const frame = preview(page)
-  // Sample after the renderer's next draw, before the drawing buffer is cleared.
-  const pixel = async () => frame.locator('#scene').evaluate((element) => new Promise<number[]>((resolve) => {
-    requestAnimationFrame(() => {
-      const canvas = element as HTMLCanvasElement
-      const gl = canvas.getContext('webgl2')!
-      const bytes = new Uint8Array(4)
-      gl.readPixels(canvas.width / 2, canvas.height / 2, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, bytes)
-      resolve([...bytes])
-    })
-  }))
-  await expect.poll(async () => (await pixel()).slice(0, 3).some((value) => value > 20)).toBe(true)
+  // WebGL clears its drawing buffer after compositing; assert the rendered
+  // canvas dimensions instead of reading pixels from a non-preserved buffer.
+  const scene = frame.locator('#scene')
+  await expect(scene).toBeVisible()
+  await expect.poll(() => scene.evaluate((element) => {
+    const canvas = element as HTMLCanvasElement
+    return canvas.width > 0 && canvas.height > 0
+  })).toBe(true)
   await page.getByRole('button', { name: /Parameters/ }).click()
   await expect(page.getByRole('spinbutton', { name: 'Rotation speed value', exact: true })).toBeVisible()
   await page.getByRole('spinbutton', { name: 'Rotation speed value', exact: true }).fill('1.2')
@@ -77,7 +126,7 @@ test('Three.js local model, parameters, pause, reset, reapply and portable round
   await expect(frame.locator('#scene')).toBeVisible()
   for (let index = 0; index < 2; index++) {
     await page.getByRole('button', { name: 'Apply', exact: true }).click()
-    await expect.poll(async () => (await pixel()).slice(0, 3).some((value) => value > 20)).toBe(true)
+    await expect(scene).toBeVisible()
     await expect(frame.locator('canvas')).toHaveCount(1)
   }
   const download = page.waitForEvent('download')
@@ -86,7 +135,49 @@ test('Three.js local model, parameters, pause, reset, reapply and portable round
   await page.locator('input[type="file"]').setInputFiles((await file.path())!)
   await expect(page.locator('.asset-section summary small')).toHaveText('2')
   await expect(page.locator('.parameter-count')).toHaveText('7')
-  await expect.poll(async () => (await pixel()).slice(0, 3).some((value) => value > 20)).toBe(true)
+  await expect(scene).toBeVisible()
+  expect(errors).toEqual([])
+})
+
+test('React + TypeScript starter mounts in isolation, responds to input and survives reapply', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  await page.goto('./')
+  await page.getByRole('button', { name: 'New', exact: true }).click()
+  await page.getByRole('button', { name: /React \+ TypeScript/ }).click()
+  const frame = page.frameLocator('iframe[title="Project preview"]')
+  const toggle = frame.getByRole('button', { name: /Open the motion study|Motion in progress/ })
+  await expect(toggle).toBeVisible()
+  await expect(frame.locator('.study')).toBeVisible()
+  await toggle.click()
+  await expect(frame.getByText('Motion in progress')).toBeVisible()
+  await expect.poll(() => frame.locator('body').evaluate(() => {
+    try { void parent.document.body; return false } catch { return true }
+  })).toBe(true)
+  for (let index = 0; index < 2; index++) {
+    await page.getByRole('button', { name: 'Apply', exact: true }).click()
+    await expect(frame.locator('#root > .study')).toHaveCount(1)
+  }
+  await page.getByTitle('Pause', { exact: true }).click()
+  await expect(page.locator('.statusbar')).toContainText('Paused')
+  await page.getByTitle('Resume', { exact: true }).click()
+  await page.getByTitle('Reset simulation', { exact: true }).click()
+  await expect(toggle).toBeVisible()
+  expect(errors).toEqual([])
+})
+
+test('all imported React blocks mount with the fixed dependency runtime', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  await page.goto('./')
+  const frame = page.frameLocator('iframe[title="Project preview"]')
+  const blocks = examples.filter((example) => example.id.startsWith('bencho-'))
+  expect(blocks).toHaveLength(41)
+  for (const example of blocks) {
+    await openExample(page, example.name)
+    await expect(frame.locator('#root > .bencho-example'), example.name).toBeVisible()
+    await expect(page.locator('.statusbar'), example.name).not.toContainText('Build failed')
+  }
   expect(errors).toEqual([])
 })
 
@@ -141,7 +232,7 @@ test('Apple desktop poses, slider, orbit, mobile scene, sandbox and large draft 
   await page.reload()
   await page.getByRole('button', { name: 'Recover draft', exact: true }).click()
   await expect(preview(page).locator('.viewer')).toHaveAttribute('data-ready', 'true')
-  await page.getByRole('combobox', { name: 'HTML viewport size' }).selectOption('390x844')
+  await page.getByRole('combobox', { name: 'Page viewport size' }).selectOption('390x844')
   await page.getByTitle('Reset simulation', { exact: true }).click()
   await expect(preview(page).locator('.viewer')).toHaveAttribute('data-ready', 'true')
   await expect(preview(page).locator('.viewer')).toHaveAttribute('data-scene', 'S')

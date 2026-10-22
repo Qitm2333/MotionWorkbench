@@ -165,7 +165,7 @@ test('binary assets round trip through folders and portable JSON without changin
 test('invalid resource paths, payloads, and unsupported dependencies are rejected', () => {
   assert.throws(() => validateProject({ ...starterThreeProject, assets: { '../model.glb': { mime: 'model/gltf-binary', base64: '' } } }), /escapes/)
   assert.throws(() => validateProject({ ...starterThreeProject, assets: { 'model.glb': { mime: 'model/gltf-binary', base64: 'not base64' } } }), /Invalid asset data/)
-  assert.throws(() => validateProject({ ...starterThreeProject, manifest: { ...starterThreeProject.manifest, dependencies: { three: '0.170.0' } } }), /Only the bundled/)
+  assert.throws(() => validateProject({ ...starterThreeProject, manifest: { ...starterThreeProject.manifest, dependencies: { three: '0.170.0' } } }), /supported bundled versions/)
   assert.throws(() => validateProject({ ...starterThreeProject, assets: { 'project.json': { mime: 'application/json', base64: '' } } }), /Invalid or duplicate/)
 })
 

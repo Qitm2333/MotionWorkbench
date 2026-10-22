@@ -1,0 +1,520 @@
+/* ── humidity ──────────────────────────────────────────── */
+/* ── humidity wheel ─────────────────────────────────────────
+   No pane. The wheel and its pill, stacked, standing directly
+   on whatever the section is made of — the same arrangement
+   the sleep dial uses, and they should read as a pair. */
+/* ── the wheel's four bands ─────────────────────────────────
+   Humidity.tsx names the band and this holds the colour, so
+   the palette can answer the theme — the hexes used to be
+   written in the component and could not.
+
+   The green is the BALANCE CHART'S green, not the site's --ok,
+   and for the reason written up on .bal-plot: --ok is a text
+   green, and a 2px tick is a thin stroke, which always reads
+   darker and duller than a block of the same colour. Two
+   blocks drawing thin lines in green should be drawing the
+   same one.
+
+   Red under 12 and amber from 12 to 25 — the band used to be
+   one amber "Critical", which is the colour of a warning
+   rather than of a problem, and left nothing to say when it
+   got worse. Blue at the top is unchanged: high humidity is
+   not an alarm, it is the other end. */
+.hum {
+  --hum-lit: #1f9d55;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  font-family: var(--font-ui);
+  color: var(--fill-on, var(--ink));}
+
+/* ── the rest of them ────────────────────────────────────────
+   Not every block has a ::before to hang a border on, and
+   giving each one a pseudo-element it does not otherwise need
+   is a lot of stylesheet for a hairline. A 1px spread shadow
+   is the same mark by another means — the create menu has
+   used exactly this since it was written, for exactly this
+   reason — and it composites without touching layout.
+
+   This is what makes Stroke honest on every entry rather than
+   on the dozen that happened to be built on a glass pane. */
+[data-stroke="on"] .bal,
+[data-stroke="on"] .bar-rail,
+[data-stroke="on"] .fan-core,
+[data-stroke="on"] .step-pill,
+[data-stroke="on"] .liq-sw,
+[data-stroke="on"] .deck-card,
+[data-stroke="on"] .tick-row,
+/* NOT the rows. Stroke is a question about the block's own
+   edge, and hanging it on every row inside drew four
+   hairlines in the middle of a panel that still had none
+   round it. `.lab` already carries the ::before this control
+   was built for, and the roster's box is a .lab. */
+
+/* ── a ring on a metaball ────────────────────────────────────
+   The reorder list's rows are blobs on a filtered layer, and a
+   spread shadow drawn there does not survive: the blur smears
+   it and the alpha row then crushes what is left to nothing,
+   so Stroke appeared to do nothing on this block in either
+   theme.
+
+   The ring goes on the UNFILTERED twin instead. Every row is
+   drawn twice — a blob that merges and an ink layer above it
+   that carries the avatar and the name — and the two share
+   their geometry exactly, so an outline on the top one traces
+   the shape of the bottom one for free. */
+/* ── and the node card ─────────────────────────────────────
+   It drew its hairline unconditionally for a revision, which
+   is the one thing a block with a Stroke control must not do:
+   the control then reads as broken in the Off position,
+   because the edge it promises to remove is still there. The
+   ring follows the card's own corner, which is a knob. */
+[data-stroke="on"] .nod-card {
+  box-shadow: 0 0 0 1px var(--pane-edge);
+  border-radius: var(--nod-r, 20px);}
+
+/* ══ Balance ════════════════════════════════════════════════
+   HEIGHT IS NOT DECLARED. It was 340px against content that
+   came to about 270, and the difference sat at the bottom of
+   the card as a band of empty fill — the "weird space" that a
+   fixed height always eventually becomes. The content sizes
+   the card now, so there is nothing to keep in agreement. */
+.bal {
+  position: relative;
+  box-sizing: border-box;
+  width: 300px;
+  /* the page's corner, not a card's. 18px was the tightest
+     radius on the bench and it made this the one block that
+     looked clipped rather than rounded — which is why 26 is
+     the Corner knob's default rather than its middle. */
+  border-radius: var(--bal-r, 28px);
+  background: var(--fill-slab, color-mix(in srgb, var(--fill-on, #17181a) 6%, transparent));
+  overflow: hidden;
+  font-family: var(--font-ui);
+  /* ── the card grows with the pull ─────────────────────────
+     The sheet inside slides down by --at and the card's own
+     height follows it, so the top edge stays put and the
+     bottom travels with the finger. Padding rather than a
+     scale: a scaled box drags its corner radius out of shape,
+     and the corner is what says this is still the same card.
+
+     --grow carries the rest padding as well as the growth, so
+     the rebound can spend it — the spring goes past zero on
+     the way home and the card compresses a few pixels below
+     its resting height. That is the bounce.
+
+     ── AND THE NEGATIVE MARGIN CANCELS IT IN LAYOUT ─────────
+     This is the part that matters and it is not an
+     optimisation. The wall and the overlay both measure a
+     block with a ResizeObserver and fit it by the LARGER of
+     its two sides, so a card whose real height changed during
+     a pull did three things at once: the wall re-packed its
+     column and every card below it jumped, the overlay
+     rescaled the block every frame so everything shrank while
+     the card stretched, and the pull itself became unreliable
+     — the re-render mid-gesture is what made it stop
+     responding.
+
+     Growing and un-growing by the same number leaves the
+     margin box exactly where it was. The card paints taller
+     and MEASURES the same, so nothing above it notices and
+     the block's box is a constant. It paints into the wall
+     card's own padding, which has room for it. */
+  padding-bottom: var(--grow, 8px);
+  margin-bottom: calc(-1 * var(--grow, 8px));}
+
+/* ── the indicator ─────────────────────────────────────────
+   Five droplets on one goo layer. It sits under the sheet and
+   is revealed as the sheet is pulled down off it.
+
+   --spread is the whole effect and it is one number: the
+   distance each droplet sits from the centre. Scattered at 13,
+   touching at about 2.6, and back out to 10 while it works. It
+   is set from React rather than derived in CSS because the
+   pull and the work phase reach it by different routes and a
+   calc() covering both would be a conditional written in
+   arithmetic.
+
+   The ring turns as a WHOLE while it works — the animation is
+   on this box, not on the droplets — so the DOM and the
+   silhouette rotate together and the library never has to
+   re-measure a moving rect. Thirty-odd frames a second of
+   getBoundingClientRect per droplet is the cost of the
+   obvious version. */
+.bal-goo {
+  position: absolute;
+  left: 50%;
+  /* 30, not 36. The ring has to clear the sheet's top edge at
+     the moment the pull commits, and the commit moved from 80
+     down to 58 — so the room the indicator had is 22px less
+     than it was and it has to sit that much higher. Which is
+     also the better composition: the gap between the ring and
+     the content it is holding open was generous enough to
+     read as two separate things. */
+  top: 30px;
+  width: 60px; height: 60px;
+  margin: -30px 0 0 -30px;
+  z-index: 1;
+  pointer-events: none;
+  /* the dots share one cell and are displaced out of it */
+  display: grid;
+  place-items: center;
+  /* opacity OUTSIDE the filter. The goo's alpha step erases
+     anything under half opacity, so fading the droplets
+     themselves would not fade the blob — it would eat it from
+     the edges in and then drop it whole. */
+  opacity: var(--p, 0);
+  scale: calc(0.82 + var(--p, 0) * 0.18);}
+
+.bal[data-phase="work"] .bal-goo {
+  opacity: 1;
+  scale: 1;
+  animation: bal-spin var(--rpm, 900ms) linear infinite;}
+
+/* ── one of the six ─────────────────────────────────────────
+   Tiny, and it can be: there is no filter to survive any more,
+   which is what the old 14px was sized against. Six 5px dots
+   on a 30px circle read as a spinner at a glance and as six
+   distinct marks when you look. They paint themselves now
+   rather than being a silhouette for a group to fill. */
+.bal-drop {
+  grid-area: 1 / 1;
+  width: 4px; height: 4px;
+  border-radius: 999px;
+  /* ── GREY, NOT INK ───────────────────────────────────────
+     A loading mark is the quietest thing that can be on a
+     screen and still be doing its job: it says "a moment",
+     and full ink says "look at this". A wash of the fill's own
+     ink rather than a fixed grey, so it stays a step off
+     whatever the component is made of in either direction. */
+  background: color-mix(in srgb, var(--fill-on, #17181a) 32%, transparent);
+  /* --dx/--dy are worked out in the component, from the
+     droplet's angle and the spread — see the note there on why
+     this is a translation and not a rotation. */
+  transform: translate(calc(var(--dx, 0) * 1px), calc(var(--dy, 0) * 1px));}
+
+.bal-scroll {
+  position: relative;
+  z-index: 2;
+  transform: translateY(var(--at));
+  /* ── pan-X, and the axis is the whole point ───────────────
+     `touch-action` names what the BROWSER may take, not what
+     the element wants. pan-y handed every vertical gesture to
+     the page for scrolling — which is the one gesture this
+     component exists to receive, so on a touch screen the card
+     never moved at all and there was no way to refresh it.
+
+     pan-x reserves the vertical drag for the element and
+     leaves horizontal to the browser, which is the correct
+     way round for something you pull down.
+
+     .bal-plot below is the opposite case and keeps pan-y
+     correctly: its scrub is HORIZONTAL, so the browser is
+     welcome to the vertical. The two values look
+     interchangeable and are exact opposites — which is how the
+     wrong one ends up on the wrong element. */
+  touch-action: pan-x;
+  /* opaque, or the droplets underneath show through the sheet
+     they are supposed to be hidden behind */
+  background: var(--fill-slab, var(--card));}
+
+.bal-scroll:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px rgba(var(--fill-on-rgb, var(--ink-rgb)), 0.45);
+  border-radius: 28px;}
+
+/* ── what it is refreshing ─────────────────────────────────
+   Everything is on the fill's own ink, so a dark Fill inverts
+   the whole sheet rather than leaving a light card sitting
+   inside a dark one. */
+/* Sized to its contents, the card came out tight everywhere at
+   once — the number against the chart, the chart against the
+   holdings. Height is cheap here and legibility is not, so the
+   padding opens up and the plot below takes the room. */
+/* the wall's gap — see .lab. The extra room the chart needed
+   came from its own height, not from the sheet's inset, so
+   tightening this gives the plot MORE width rather than less. */
+/* the top gets more than the other three sides: the balance
+   is the first thing read and it was sitting right up against
+   the card's edge */
+/* and the foot gets LESS than the sides, because the card
+   under it already carries 8px of its own for the squash —
+   4 here lands the tabs 12 from the bottom edge, the same as
+   they sit from either side */
+.bal-sheet { padding: 24px 12px 4px; }
+
+.bal-sum {
+  margin: 0;
+  /* Inter, not DM Mono — with tabular figures, which is the
+     only thing the mono face was actually providing. */
+  font-size: 30px;
+  line-height: 1;
+  /* 500, not 600. At 33px a semibold balance was the loudest
+     thing on the card by some distance and read as a headline
+     rather than as a figure; the size already makes it the
+     first thing you look at. */
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  color: var(--fill-on, var(--ink));
+  font-variant-numeric: tabular-nums;}
+
+/* the currency and the cents are the same figure at a quieter
+   weight — a balance is one number, not three */
+/* THE MARK IS PART OF THE NUMBER. It was two thirds the size
+   at a third of the weight, which read as a footnote attached
+   to the figure rather than as the figure's own currency —
+   same size, same weight, same colour, and it is one number
+   again. */
+.bal-cur {
+  font-size: inherit;
+  font-weight: inherit;
+  margin-right: 2px;}
+
+/* the cents stay grey, and come up: at 18 against a 33px
+   figure they were a different order of information; at 24
+   they are the same number, quieter. */
+.bal-dec { font-size: 20px; opacity: 0.34; font-weight: 500; letter-spacing: -0.02em; }
+
+.bal-move {
+  /* tabular here above all: this line is rewritten on every
+     step of a scrub, and proportional figures would make the
+     row twitch under the pointer */
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 9px 0 0;
+  /* 12.5, up from 11.5. It carries the change AND the day —
+     the two things you read after the balance itself — and at
+     11.5 under a 33px figure it was sized like a caption on a
+     line that is doing more work than that. */
+  font-size: 12px;
+  font-weight: 400;
+  color: color-mix(in srgb, var(--fill-on, #17181a) 52%, var(--fill-slab, #ffffff));
+  letter-spacing: 0em;}
+
+.bal-move[data-up="true"] { color: var(--ok); }
+
+.bal-move[data-up="false"] { color: var(--ember); }
+
+/* the word, or the time — always the quiet half of the line,
+   whichever it currently is */
+.bal-when {
+  color: color-mix(in srgb, var(--fill-on, #17181a) 32%, var(--fill-slab, #ffffff));
+  font-variant-numeric: tabular-nums;}
+
+/* ── the line ───────────────────────────────────────────────
+   A curve through the readings with a wash under it. The wash
+   is what stops it reading as a wireframe: a stroke alone on a
+   card is a diagram, a stroke over a fade is a chart.
+
+   GREEN, because the reading it draws is. The figure above it
+   is already --ok when the day is up, and a black line under
+   two green numbers is the one element on the card not
+   participating in what it is about.
+
+   `color` is set on the wrapper so the gradient's
+   currentColor, the stroke, the guide and the dot all agree
+   without any of them naming a value. */
+.bal-plot {
+  position: relative;
+  display: block;
+  margin: 22px 0 6px;
+  /* the grab area is the plot, and it is worth more than the
+     line is tall — a 3px-high hit target for a scrub is a
+     scrub nobody finds.
+
+     It is a VARIABLE because two other things have to know
+     it. The plot is the containing block for the dot and the
+     guide, so a percentage inside it resolves against a box
+     that is 12px taller than the chart — and both of them are
+     placing themselves against the CHART. Written out three
+     times these drift; written once they cannot. */
+  --pad-y: 6px;
+  padding: var(--pad-y) 0;
+  /* ── BRIGHTER THAN THE NUMBER, on purpose ───────────────
+     --ok is a TEXT green: #15803d is chosen to read at 11.5px
+     on white, which makes it deep and, drawn as a 1.7px
+     stroke, muddy — a thin line of a dark colour always looks
+     darker than a block of it, so the chart came out dull
+     against the two green figures above it.
+
+     So the plot takes a green of its own, the same hue with
+     the saturation a stroke needs. Not a second colour: the
+     pair reads as one green because at these two sizes it
+     does — brightening the line is what makes it MATCH the
+     number optically rather than only in the stylesheet.
+
+     Dark needs none of this: --ok is already #34d17a there,
+     which is the vibrance this is after. The light ramp was
+     the dull one. */
+  --line: #1f9d55;
+  color: var(--line);
+  cursor: crosshair;
+  touch-action: pan-y;}
+
+[data-theme="dark"] .bal-plot { --line: #1f9d55; }
+
+/* and the same argument the other way for a fall */
+.bal-plot[data-up="false"] { --line: #e5484d; color: var(--line); }
+
+[data-theme="dark"] .bal-plot[data-up="false"] { --line: #ff7a4d; }
+
+.bal-line {
+  display: block;
+  width: 100%;
+  /* the chart is the thing you scrub, so it is the thing that
+     should have got the room — 62px of curve under a 33px
+     number was a footnote to it */
+  height: 92px;
+  overflow: visible;}
+
+.bal-curve {
+  fill: none;
+  stroke: currentColor;
+  /* 2.1, up from 1.7. The same argument as the colour above it
+     — a thin stroke gives a hue less to be read from, so the
+     line was paying twice for being fine. A quarter more
+     weight is enough to carry the green without the curve
+     starting to read as a shape rather than a reading. */
+  stroke-width: 2.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  /* WITHOUT THIS the stroke stretches with the viewBox, and a
+     100-unit box mapped across 320px of card draws a rope
+     along one axis and a hairline along the other. */
+  vector-effect: non-scaling-stroke;}
+
+/* ── reading the day back ───────────────────────────────────
+   The guide only exists while you are on the plot. A
+   permanent vertical rule is a second axis nobody asked for,
+   and it would be pointing at "now", which the dot already
+   marks. */
+.bal-guide {
+  position: absolute;
+  top: var(--pad-y, 6px); bottom: var(--pad-y, 6px);
+  width: 1px;
+  margin-left: -0.5px;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease;}
+
+.bal-plot[data-scrub] .bal-guide { opacity: 0.28; }
+
+/* The mark on the reading, outside the stretched svg. Its
+   position comes from the same points the path was built
+   from, so it is ON the curve rather than near it.
+
+   It does NOT transition its position. A dot that eases toward
+   the pointer is a dot that is wrong for 140ms at every step,
+   and the whole claim of a scrub is that the number and the
+   place agree. Only the size changes on a timer. */
+/* ── the dot sits on the CHART, not on the plot ─────────────
+   `--tip` is where the reading is down the chart, 0 at the top
+   and 1 at the bottom, and it has to be resolved against the
+   chart's own height. A plain `top: %` resolves against the
+   containing block — the plot, which is 12px taller because of
+   its own grab padding — so the dot landed 6px high at the top
+   of the range, 6px low at the bottom, and exactly right in
+   the middle. Measured before the fix: 5.99px below the line's
+   end point. Correct in the middle is the worst kind of wrong,
+   because it looks like a rounding error rather than a
+   mistake.
+
+   The guide above it was always right; it is placed from both
+   edges rather than by a fraction, so it never had to know. */
+.bal-tip {
+  position: absolute;
+  top: calc(var(--pad-y, 6px) + (100% - 2 * var(--pad-y, 6px)) * var(--tip, 0));
+  width: 9px; height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border-radius: 999px;
+  background: var(--fill-slab, var(--bg));
+  box-shadow: 0 0 0 2px currentColor;
+  pointer-events: none;
+  transition: scale 160ms cubic-bezier(0.24, 1.34, 0.38, 1);}
+
+.bal-plot[data-scrub] .bal-tip { scale: 1.18; }
+
+/* ── the holdings ───────────────────────────────────────────
+   TWO CARDS, SIDE BY SIDE. They were two full-width rows, one
+   under the other, which made a list out of a pair — and the
+   pair is the point. Side by side they are half the height and
+   they read as what they are: two holdings, compared.
+
+   No mono anywhere. The ticker was 9.5px of IBM Plex Mono
+   doing the job a letterspaced Inter caption does without
+   changing typeface mid-card. */
+/* ── the window ─────────────────────────────────────────────
+   Three small pills where two holdings cards used to be. Light
+   on purpose: the chart above is the subject, and what sits
+   under it should be a control rather than a second reading
+   competing with the first. */
+.bal-win {
+  position: relative;
+  display: flex;
+  gap: 4px;
+  margin: 16px 0 0;}
+
+/* One tab wide, and one tab plus a gap per step across. The
+   percentage in translateX is of the PILL's own width, which
+   is the tab width — so the sum is exact at any card scale and
+   nothing has to be measured. */
+.bal-win-pill {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: calc((100% - (var(--win-n, 3) - 1) * 4px) / var(--win-n, 3));
+  border-radius: var(--bal-tab-r, 999px);
+  background: color-mix(in srgb, var(--fill-on, #17181a) 6%, transparent);
+  transform: translateX(calc(var(--win, 0) * (100% + 4px)));
+  /* A bounce you feel rather than watch. The overshoot is
+     still the point — it is what separates a thing being MOVED
+     from a thing being switched — but 1.48 on the second
+     control point threw it 13px past a 78px tab, which is a
+     sixth of the travel arriving after the pill had already
+     got there. 1.16 puts that in the low single figures, and
+     the shorter duration keeps the whole move under the time
+     it takes to look at it. */
+  transition: transform 420ms cubic-bezier(0.24, 1.34, 0.38, 1);}
+
+.bal-win-btn {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  /* 32 and 12.5px, up from 28 and 11.5 — the row read as a
+     footnote under the chart rather than as the control it is */
+  height: 32px;
+  border: 0;
+  /* the card's corner, scaled down and capped at half the
+     tab's height — see the note in Elastic.tsx */
+  border-radius: var(--bal-tab-r, 999px);
+  background: none;
+  color: color-mix(in srgb, var(--fill-on, #17181a) 52%, var(--fill-slab, #ffffff));
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0em;
+  cursor: pointer;
+  /* the label lands before the pill does, so the word you
+     pressed is the one that reads first */
+  transition: color 220ms ease, transform 220ms cubic-bezier(0.24, 1.34, 0.38, 1);}
+
+.bal-win-btn:hover { color: var(--fill-on, var(--ink)); }
+
+.bal-win-btn:active { transform: scale(0.96); }
+
+/* the pad is the pill's now — this only carries the ink */
+.bal-win-btn[data-on] { color: var(--fill-on, var(--ink)); }
+
+@media (prefers-reduced-motion: reduce) {
+  .bal[data-phase="work"] .bal-goo { animation-duration: 3s; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bal-tip, .bal-guide, .bal-win-pill { transition-duration: 160ms; }
+}
+
+@keyframes bal-spin { to { rotate: 360deg; } }

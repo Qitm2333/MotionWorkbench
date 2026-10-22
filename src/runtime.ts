@@ -25,6 +25,7 @@ export async function compileProject(project: Project) {
     bundle: true,
     write: false,
     format: 'esm',
+    jsx: 'automatic',
     platform: 'browser',
     target: 'es2022',
     sourcemap: 'inline',
@@ -33,6 +34,19 @@ export async function compileProject(project: Project) {
       setup(plugin) {
         plugin.onResolve({ filter: /.*/ }, (args) => {
           if (args.kind === 'entry-point') return { path: normalize(args.path), namespace: 'project' }
+          if (project.manifest.projectType === 'react' && ['react', 'react-dom/client', 'react/jsx-runtime'].includes(args.path)) return { path: args.path, namespace: 'react-runtime' }
+          const reactDependencies = ['framer-motion', 'lucide-react', 'liquid-gooey'] as const
+          if (project.manifest.projectType === 'react' && reactDependencies.includes(args.path as typeof reactDependencies[number])) {
+            const version = project.manifest.dependencies?.[args.path as keyof NonNullable<Project['manifest']['dependencies']>]
+            if (!version) return { errors: [{ text: `Declare dependencies.${args.path}: a supported version in project.json` }] }
+            return { path: args.path, namespace: 'react-runtime' }
+          }
+          if (project.manifest.projectType === 'react' && args.path.startsWith('.') && /\.css(?:\?.*)?$/i.test(args.path)) {
+            const importerDirectory = args.importer.split('/').slice(0, -1).join('/')
+            const base = normalize(importerDirectory ? `${importerDirectory}/${args.path.split('?', 1)[0]}` : args.path.split('?', 1)[0])
+            return base in files ? { path: base, namespace: 'react-style' } : { errors: [{ text: `Stylesheet not found: ${args.path} from ${args.importer}` }] }
+          }
+          if (project.manifest.projectType === 'react' && !args.path.startsWith('.') && args.namespace !== 'react-runtime' && args.path !== 'three' && !args.path.startsWith('three/addons/')) return { errors: [{ text: `Dependency is not included in the React runtime: ${args.path}` }] }
           if (args.path === 'three' || args.path.startsWith('three/addons/')) {
             if (!project.manifest.dependencies?.three) return { errors: [{ text: 'Add dependencies.three: "0.180.0" to project.json or create a Three.js project' }] }
             const suffix = args.path === 'three' ? 'three.module.js' : `addons/${args.path.slice('three/addons/'.length)}`
@@ -56,6 +70,17 @@ export async function compileProject(project: Project) {
           }
           return { contents: await pending, loader: 'js' }
         })
+        plugin.onLoad({ filter: /.*/, namespace: 'react-runtime' }, (args) => {
+          const react = 'globalThis.MotionWorkbenchReact'
+          if (args.path === 'react') return { loader: 'js', contents: `const React=${react}.React;export default React;export const {Children,Component,Fragment,Profiler,Suspense,cloneElement,createContext,createElement,forwardRef,isValidElement,lazy,memo,startTransition,useCallback,useContext,useDebugValue,useDeferredValue,useEffect,useId,useImperativeHandle,useLayoutEffect,useMemo,useReducer,useRef,useState,useSyncExternalStore,useTransition}=React;` }
+          if (args.path === 'react-dom/client') return { loader: 'js', contents: `const Client=${react}.ReactDOMClient;export const {createRoot,hydrateRoot}=Client;` }
+          if (args.path === 'react/jsx-runtime') return { loader: 'js', contents: `const JSX=${react}.JSXRuntime;export const {Fragment,jsx,jsxs}=JSX;` }
+          if (args.path === 'framer-motion') return { loader: 'js', contents: `const Motion=${react}.Motion;export const {AnimatePresence,animate,motion,useAnimationControls,useMotionValue,useSpring,useTransform,useVelocity}=Motion;` }
+          if (args.path === 'lucide-react') return { loader: 'js', contents: `const Icons=${react}.Icons;export const {ArrowDown,ArrowRight,Bookmark,Check,CircleCheck,CircleX,Copy,FileText,Folder,GitCommitHorizontal,Grid2x2,Heart,House,Info,Link2,Pause,Phone,Plane,Play,Plus,RefreshCw,Search,Settings2,SkipBack,SkipForward,SmilePlus,Table2,Timer,TriangleAlert,Upload,User,X,Eye,EyeOff,ChevronDown}=Icons;export {Upload as UpIcon};` }
+          if (args.path === 'liquid-gooey') return { loader: 'js', contents: `const LiquidGooey=${react}.LiquidGooey;export const {Liquid}=LiquidGooey;` }
+          return { errors: [{ text: `Unknown React runtime module: ${args.path}` }] }
+        })
+        plugin.onLoad({ filter: /.*/, namespace: 'react-style' }, () => ({ loader: 'js', contents: '' }))
         plugin.onLoad({ filter: /.*/, namespace: 'project' }, (args) => {
           const contents = files[args.path]
           if (contents === undefined) return { errors: [{ text: `File not found: ${args.path}` }] }
@@ -296,12 +321,16 @@ function normalizeAssetPath(path: string) {
 }
 
 export async function startHtmlPreview(frame: HTMLIFrameElement, project: Project, onParameters: (parameters: ParameterDefinition[], values: Record<string, ParameterValue>) => void, parameterOverrides: Record<string, ParameterValue> = {}, onError: (error: Error) => void = () => {}, shouldCommit: () => boolean = () => true): Promise<PreviewRuntime> {
-  if (project.manifest.projectType !== 'html') throw new Error('HTML preview requires an HTML/CSS project')
+  if (project.manifest.projectType !== 'html' && project.manifest.projectType !== 'react') throw new Error('HTML preview requires an HTML/CSS or React project')
   const entryPath = normalizeAssetPath(project.manifest.entry)
   let html = project.files[entryPath]
   if (html === undefined) throw new Error(`Entry file not found: ${entryPath}`)
   const prepared = await prepareHtmlProject(project, compileProject)
   html = prepared.html
+  if (project.manifest.projectType === 'react') {
+    const runtimeUrl = new URL(`${import.meta.env.BASE_URL}vendor/react/19.3.1/runtime.js`, location.href).href
+    html = html.replace(/<head\b[^>]*>/i, (head) => `${head}<script src="${runtimeUrl}"></script>`)
+  }
   if (!shouldCommit()) throw new Error('Preview build was superseded by a newer version')
   const bridgeScript = `<script>
 ${opaqueOriginHistoryCompatibilityScript};

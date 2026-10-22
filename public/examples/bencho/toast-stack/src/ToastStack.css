@@ -1,0 +1,91 @@
+/* ══ Toast stack (lab/ToastStack.tsx) ══════════════════════════
+   Three toasts stacked, fanning into a list on hover. Tones are the
+   reference's: the front one white, the tucked ones a barely-there
+   2% grey — both the same, so they read as paper behind paper rather
+   than a darkening ramp. Where the reference separates them with a
+   soft shadow, this uses a faint hairline (no drop shadows on the
+   bench). Status icons are their own solid colours, never faded. */
+.tst {
+  position: relative;
+  font-family: var(--font-ui);
+  color: var(--fill-on, var(--ink));
+  --tst-mute: color-mix(in srgb, var(--fill-on, #17181a) 52%, var(--fill-slab, #ffffff));
+  --tst-wash: color-mix(in srgb, var(--fill-on, #17181a) 6%, var(--fill-slab, #ffffff));}
+
+.tst-toast {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px 0 16px;
+  border-radius: var(--tst-r);
+  background: var(--fill-slab, #ffffff);
+  transform-origin: 50% 0;
+  transition: background-color 220ms ease, box-shadow 220ms ease;}
+
+/* tucked: the same near-white for both, and a faint edge so each
+   sliver has a line to read by */
+.tst:not([data-open]) .tst-toast:not([data-front]) {
+  background: color-mix(in srgb, var(--fill-on, #17181a) 6%, var(--fill-slab, #ffffff));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--fill-on, #17181a) 6%, transparent);}
+
+[data-stroke="on"] .tst-toast { box-shadow: 0 0 0 1px var(--pane-edge); }
+
+/* only the front one is read while stacked; the rest are slivers */
+.tst-toast > * { transition: opacity 220ms ease; }
+
+.tst:not([data-open]) .tst-toast:not([data-front]) > * { opacity: 0; }
+
+.tst-icon { flex: none; display: grid; place-items: center; }
+
+.tst-toast[data-kind="success"] .tst-icon { color: #1f9d55; }
+
+.tst-toast[data-kind="error"] .tst-icon { color: #e5484d; }
+
+.tst-toast[data-kind="warning"] .tst-icon { color: #e09a12; }
+
+.tst-toast[data-kind="info"] .tst-icon { color: var(--tst-mute); }
+
+.tst-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+
+.tst-text b { font-size: 14px; font-weight: 500; line-height: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.01em; }
+
+.tst-text span { font-size: 13px; line-height: 17px; color: var(--tst-mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: 0em; }
+
+.tst-act {
+  flex: none;
+  height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--tst-wash);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: scale 160ms cubic-bezier(0.22, 1, 0.36, 1);
+  letter-spacing: 0em;}
+
+.tst-act:active { scale: 0.96; }
+
+.tst-x {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--tst-mute);
+  cursor: pointer;
+  transition: background-color 160ms ease, color 160ms ease;}
+
+.tst-x:hover { background: var(--tst-wash); color: var(--fill-on, var(--ink)); }
+
+.tst-act:focus-visible, .tst-x:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--signal, #2231dd); }

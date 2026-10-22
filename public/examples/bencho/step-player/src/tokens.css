@@ -1,0 +1,114 @@
+/* ── Bencho tokens ─────────────────────────────────────────
+   The custom properties the free blocks read, at the values
+   bencho.dev draws them with. Light by default; dark under
+   [data-theme="dark"] on any ancestor, or automatically with
+   the system setting unless [data-theme="light"] says otherwise.
+
+   Map these to your own theme rather than keeping two: a block
+   only ever reads the names, never the values. */
+:root {
+  --font-ui: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --bg: #ffffff;
+  --board: #ffffff;
+  --card: #f7f7f6;
+  --surface: #f7f7f6;
+  --surface-2: #f1f1f0;
+  --surface-3: #ecebe7;
+  --ink: #17181a;
+  --ink-rgb: 23, 24, 26;
+  --ink-2: #3c3b37;
+  --ink-3: #5c5b56;
+  --ink-4: #6f6e68;
+  --ink-5: #85847e;
+  --on-ink: #ffffff;
+  --on-ink-rgb: 255, 255, 255;
+  --slab: #17181a;
+  --on-slab: #ffffff;
+  --slab-dark: #0e0f11;
+  --fill-slab: #ffffff;
+  --fill-on: #17181a;
+  --fill-on-rgb: 23, 24, 26;
+  --pane: var(--fill-slab);
+  --pane-edge: rgba(23, 24, 26, 0.08);
+  --pane-thumb: rgba(23, 24, 26, 0.07);
+  --inlay: rgba(255, 255, 255, 0.55);
+  --inlay-hi: rgba(23, 24, 26, 0.09);
+  --elev-rgb: 255, 255, 255;
+  --glass-rgb: 255, 255, 255;
+  --shadow-rgb: 23, 24, 26;
+  --wash: 0.06;
+  --pick: #0d99ff;
+  --signal: #2231dd;
+  --focus: #2231dd;
+  --ok: #15803d;
+  --ember: #b8431c;
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --bg: #000000;
+  --board: #1a1a1a;
+  --card: #0a0a0a;
+  --surface: #0f0f0f;
+  --surface-2: #181818;
+  --surface-3: #202020;
+  --ink: #ffffff;
+  --ink-rgb: 255, 255, 255;
+  --ink-2: #b4b4b4;
+  --ink-3: #9a9a9a;
+  --ink-4: #828282;
+  --ink-5: #6b6b6b;
+  --on-ink: #000000;
+  --on-ink-rgb: 0, 0, 0;
+  --slab: #1a1a1a;
+  --on-slab: #ffffff;
+  --slab-dark: #262626;
+  --fill-slab: #262626;
+  --fill-on: #ffffff;
+  --fill-on-rgb: 255, 255, 255;
+  --pane-edge: rgba(255, 255, 255, 0.08);
+  --pane-thumb: rgba(255, 255, 255, 0.07);
+  --inlay: rgba(255, 255, 255, 0.1);
+  --inlay-hi: rgba(255, 255, 255, 0.09);
+  --elev-rgb: 32, 32, 32;
+  --shadow-rgb: 0, 0, 0;
+  --wash: 0.09;
+  --pick: #3aa9ff;
+  --ok: #34d17a;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #000000;
+    --board: #1a1a1a;
+    --card: #0a0a0a;
+    --surface: #0f0f0f;
+    --surface-2: #181818;
+    --surface-3: #202020;
+    --ink: #ffffff;
+    --ink-rgb: 255, 255, 255;
+    --ink-2: #b4b4b4;
+    --ink-3: #9a9a9a;
+    --ink-4: #828282;
+    --ink-5: #6b6b6b;
+    --on-ink: #000000;
+    --on-ink-rgb: 0, 0, 0;
+    --slab: #1a1a1a;
+    --on-slab: #ffffff;
+    --slab-dark: #262626;
+    --fill-slab: #262626;
+    --fill-on: #ffffff;
+    --fill-on-rgb: 255, 255, 255;
+    --pane-edge: rgba(255, 255, 255, 0.08);
+    --pane-thumb: rgba(255, 255, 255, 0.07);
+    --inlay: rgba(255, 255, 255, 0.1);
+    --inlay-hi: rgba(255, 255, 255, 0.09);
+    --elev-rgb: 32, 32, 32;
+    --shadow-rgb: 0, 0, 0;
+    --wash: 0.09;
+    --pick: #3aa9ff;
+    --ok: #34d17a;
+    color-scheme: dark;
+  }
+}

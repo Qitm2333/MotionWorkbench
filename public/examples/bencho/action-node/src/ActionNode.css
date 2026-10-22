@@ -1,0 +1,326 @@
+/* ── the rest of them ────────────────────────────────────────
+   Not every block has a ::before to hang a border on, and
+   giving each one a pseudo-element it does not otherwise need
+   is a lot of stylesheet for a hairline. A 1px spread shadow
+   is the same mark by another means — the create menu has
+   used exactly this since it was written, for exactly this
+   reason — and it composites without touching layout.
+
+   This is what makes Stroke honest on every entry rather than
+   on the dozen that happened to be built on a glass pane. */
+[data-stroke="on"] .bal,
+[data-stroke="on"] .bar-rail,
+[data-stroke="on"] .fan-core,
+[data-stroke="on"] .step-pill,
+[data-stroke="on"] .liq-sw,
+[data-stroke="on"] .deck-card,
+[data-stroke="on"] .tick-row,
+/* NOT the rows. Stroke is a question about the block's own
+   edge, and hanging it on every row inside drew four
+   hairlines in the middle of a panel that still had none
+   round it. `.lab` already carries the ::before this control
+   was built for, and the roster's box is a .lab. */
+
+/* ── a ring on a metaball ────────────────────────────────────
+   The reorder list's rows are blobs on a filtered layer, and a
+   spread shadow drawn there does not survive: the blur smears
+   it and the alpha row then crushes what is left to nothing,
+   so Stroke appeared to do nothing on this block in either
+   theme.
+
+   The ring goes on the UNFILTERED twin instead. Every row is
+   drawn twice — a blob that merges and an ink layer above it
+   that carries the avatar and the name — and the two share
+   their geometry exactly, so an outline on the top one traces
+   the shape of the bottom one for free. */
+/* ── and the node card ─────────────────────────────────────
+   It drew its hairline unconditionally for a revision, which
+   is the one thing a block with a Stroke control must not do:
+   the control then reads as broken in the Off position,
+   because the edge it promises to remove is still there. The
+   ring follows the card's own corner, which is a knob. */
+[data-stroke="on"] .nod-card {
+  box-shadow: 0 0 0 1px var(--pane-edge);
+  border-radius: var(--nod-r, 20px);}
+
+/* and the buttons, which have nothing else on them */
+[data-stroke="on"] .nod-act {
+  box-shadow: 0 0 0 1px var(--pane-edge);}
+
+/* ══ Action node ══════════════════════════════════════════
+   A node card whose controls live in its top-right corner
+   until the pointer asks for them. The component owns the
+   geometry — every number that decides where a button sits is
+   in lab/ActionNode.tsx, because it is arithmetic on an arc
+   and not a style. What is here is what the card and the
+   buttons are MADE of.
+
+   The vertical padding on .nod is set inline for the same
+   reason: it is the fan's own reach, and a rule here would be
+   a second copy of a number that already exists. */
+/* ── the box is the card, plus air ABOVE AND BELOW ───────────────────────────────────
+   Never beside. The wall sizes a component by its LARGEST
+   side, so air reserved to the left or right is width the
+   card does not get — which is what made this card draw at
+   199 against a neighbour's 260 once. Height is free until it
+   passes the width, and the fan needs somewhere of its own to
+   be: see AIR in ActionNode.tsx. */
+.nod {
+  position: relative;
+  width: max-content;
+  font-family: var(--font-ui);}
+
+/* ── the card is painted OVER the fan ──────────────────────
+   Which is what makes the buttons come out of the corner
+   rather than out of the middle of the card. They are struck
+   from a point 26px inside it, so at rest they are sitting
+   under the card with nothing of them showing; travelling out
+   along the arc is what brings them past the edge.
+
+   Without this they emerge from inside the card, small, and
+   grow — which reads as the card sprouting things rather than
+   as a drawer being opened. One line of stacking, and the
+   whole gesture changes meaning.
+
+   `position: relative` only so z-index applies. Nothing here
+   is offset. */
+.nod-card {
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  /* 272. It was 300, the width the rest of the wall is drawn
+     at, and read as a banner rather than a node — a card on a
+     canvas is taller than it looks wide. Narrower also draws it
+     a touch larger on the wall, which scales by the longest
+     side. */
+  width: 272px;
+  padding: 20px;
+  /* set per render — the Corner knob. The BUTTONS are not cut
+     with it: they are discs, and a disc with a 12px corner is
+     a squircle, which is a different object rather than the
+     same one adjusted. One knob, one shape. */
+  border-radius: var(--nod-r, 20px);
+  background: var(--fill-slab, var(--card));
+  color: var(--fill-on, var(--ink));
+  /* ── it lifts a hair while the fan is out ──────────────
+     Not a hover state for its own sake: the card is the thing
+     the buttons came out of, and a card that answers at the
+     same moment they do reads as one object doing one thing.
+     0.4px of travel — you would not find it if you looked for
+     it, and you would miss it if it were not there. */
+  transition: translate 220ms cubic-bezier(0.24, 1.34, 0.38, 1);}
+
+.nod-card[data-on] { translate: 0 -1px; }
+
+.nod-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;}
+
+/* the product's mark, on its own ground. A disc rather than a
+   square because everything else in the card that stands for
+   a service is a disc, and two shapes for one idea is how a
+   card stops reading as a set. */
+.nod-mark {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  /* ── cut with the card, not pinned to a circle ──────────
+     Written from the Corner knob — see the note on --nod-mark-r
+     in ActionNode.tsx. At the top of the range it is 15, which
+     on a 30px box is the disc this used to be, so nothing is
+     lost at the end it came from.
+
+     The FACES are not cut with it and must not be. A face is a
+     photograph of a person, and how a photograph of a person is
+     cut has nothing to do with the radius of the card it
+     happens to be sitting on — the reorder list's note makes
+     the same call about the same thing. The buttons on the fan
+     stay discs for their own reason, written on the knob. */
+  border-radius: var(--nod-mark-r, 14px);
+  background: rgba(var(--ink-rgb), var(--wash));
+  color: var(--fill-on, var(--ink));}
+
+/* ── the step's name ────────────────────────────────
+   500, not 600. The bench uses 600 all over, but almost all of
+   it is at 10 to 13px — furniture, where the weight is buying
+   back legibility a small size gave away. At 15px nothing has
+   been given away, so the same 600 is just loud, and it was
+   the heaviest thing on a card whose whole subject is four
+   quiet buttons.
+
+   The badge beside it is what keeps the hierarchy: this line
+   does not need to be bold to be the name, it needs to be the
+   darkest and the largest, and it is both. */
+.nod-name {
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -0.01em;}
+
+/* The "Connected" badge that sat at the end of the header row
+   is gone — see the note where it was drawn in ActionNode.tsx.
+   Its rules went with it, and so did the green it used: a
+   token kept alive for a rule nobody draws is the next thing
+   somebody restyles by accident. */
+
+/* ── the services, overlapped ──────────────────────────────
+   A negative margin and a ring in the card's own colour, so
+   the discs read as a stack rather than as a row with a
+   spacing problem. The ring has to be the CARD's fill and not
+   a fixed white: on the dark fill a white ring would draw
+   four bright arcs across the middle of the card. */
+/* ── after the sentence, and further from it than the
+   sentence is from the name ───────────────────────────────
+   The faces are a different KIND of thing from the two lines
+   above them — a name and a description are one block of
+   reading, and who is on the step is an aside under it. 16
+   against the description's 13 is what says so. */
+.nod-chain {
+  display: flex;
+  align-items: center;
+  margin-top: 16px;}
+
+.nod-link {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--fill-on, #17181a) 12%, transparent);
+  box-shadow: 0 0 0 2px var(--fill-slab, var(--card));
+  /* the fallback when a photograph does not load, which is
+     what the initials in the component are for */
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-4);
+  letter-spacing: 0em;}
+
+.nod-link img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;}
+
+.nod-link + .nod-link { margin-left: -6px; }
+
+.nod-more {
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-4);
+  letter-spacing: 0em;}
+
+.nod-say {
+  margin: 13px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-3);
+  letter-spacing: 0em;}
+
+/* ── AND THE GREEN DOT IS GONE WITH IT ─────────────────────
+   Two rules and a colour pair lived here: .nod-state, a row at
+   the foot of the card holding a dot and the word Connected,
+   and then .nod-dot and --nod-live after the pair moved up
+   into the header badge. The badge has gone now, so the dot
+   has nothing left to sit in and the token has nothing left to
+   colour.
+
+   Written down rather than simply deleted because the COLOUR
+   was a decision and the next status dot on this bench will
+   want it: #12b055 on light, #3ce085 on dark, which is the
+   humidity wheel's pair. A text green (#16a34a) goes grey at
+   seven pixels — a small mark needs a brighter one to read as
+   the same colour. And no halo: a 3px spread at a tenth alpha
+   makes a connection look like it is transmitting. */
+
+/* ── the fan ───────────────────────────────────────────────
+   A zero-sized box pinned to the card's top-right corner.
+   Every button is absolutely placed against it and carries
+   its own translate, so they all share one origin and the arc
+   is the only thing that separates them.
+
+   `position: absolute` with width 0: the anchor is a POINT,
+   and giving it a size would mean every button's offset was
+   measured from an edge that has nothing to do with the
+   corner they are supposed to be coming out of. */
+.nod-fan {
+  position: absolute;
+  /* under the card. It comes after it in the markup, so
+     without this it would paint on top and every button would
+     be visible from the first frame. */
+  z-index: 0;
+  width: 0;
+  height: 0;}
+
+/* ── the pad that makes the fan reachable ───────────────
+   Invisible, and it has no business being anything else: its
+   whole job is to be part of .nod so that the air between the
+   card and the buttons stops being a place the pointer can
+   fall through. Shape, size and the bite out of it are all in
+   ActionNode.tsx, where the geometry they follow lives.
+
+   Inert until the fan is out. The card opens on its own hover
+   and nothing else, and a pad that could open it would put a
+   trigger in blank space beside the card. */
+.nod-reach {
+  position: absolute;
+  pointer-events: none;}
+
+.nod-reach[data-on] { pointer-events: auto; }
+
+.nod-act {
+  position: absolute;
+  /* the anchor is a point and the translate in the component
+     moves the button from it. The half-a-button that centres
+     it on that point is set inline, next to the DOT it is
+     half OF — see ActionNode.tsx. */
+  top: 0;
+  left: 0;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--fill-slab, var(--card));
+  color: var(--fill-on, var(--ink));
+  /* ── no shadow, and none to put back ───────────────────
+     It had a soft lift, on the reasoning that a button off
+     the edge of a card needs separating from the page. It
+     does not: it is a filled disc on flat ground and the fill
+     already separates it. What the shadow actually did was
+     make four small objects look like they were hovering
+     above a card they are supposed to have come out of.
+
+     The hairline is the Stroke control's to draw and is not
+     here either \u2014 a button outlined whatever that switch says
+     makes the switch look broken. */
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  /* ── two writers, one scale ────────────────────────────
+     The spring owns how far out of the corner a button is and
+     the hover owns whether it is being pointed at, and both
+     want to scale it. An inline `scale` beats any rule, so
+     the component writes --pop instead and the two are
+     multiplied here.
+
+     ONLY --zoom IS TRANSITIONED, which is the whole reason
+     for the split. A transition on `scale` itself would smooth
+     the spring's own frames — two animations arguing over one
+     property, which is the note Sound and Tilt both carry.
+     --zoom changes twice per hover and can be eased; --pop
+     changes every frame and must not be. */
+  scale: calc(var(--pop, 1) * var(--zoom, 1));
+  transition: --zoom 160ms cubic-bezier(0.24, 1.34, 0.38, 1);}
+
+/* ── the hover is the size, and nothing else ───────────────
+   It inverted first — ink disc, card-coloured glyph — which
+   made four small buttons the darkest thing on screen the
+   moment you went near them. Then it was eight per cent of
+   ink mixed into the fill, which is quieter and still a
+   second answer to a question the scale had already answered.
+
+   So: one cue. The button grows and stays the colour it was.
+   Nothing here changes the fill, which is why the rule above
+   has no background transition left to run. */
+.nod-act:hover { --zoom: 1.12; }

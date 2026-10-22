@@ -6,7 +6,7 @@ import * as monaco from 'monaco-editor'
 import { ModuleResolutionKind, typescriptDefaults } from 'monaco-editor/languages/features/typescript/register.js'
 import { Activity, AlertCircle, BookOpen, Box, Check, ChevronDown, ChevronRight, Circle, Copy, Download, FileCode2, FilePlus2, Folder, FolderOpen, FolderPlus, Maximize2, Minimize2, Minus, Moon, Package, Pencil, Play, Plus, RotateCcw, Save, SlidersHorizontal, Square, Sun, Trash2, Upload, Waves, X } from 'lucide-react'
 import './App.css'
-import { createCurveFromPreset, curvePresets, isAllowedProjectFile, isProjectEntry, isProjectSource, readProjectDirectory, sampleCurveValue, starterHtmlProject, starterProject, validateProject, writeProjectDirectory } from './project'
+import { createCurveFromPreset, curvePresets, isAllowedProjectFile, isProjectEntry, isProjectSource, readProjectDirectory, sampleCurveValue, starterHtmlProject, starterProject, starterReactProject, validateProject, writeProjectDirectory } from './project'
 import type { CurveResource, DirectoryHandle, Project } from './project'
 import { startHtmlPreview, startPreview } from './runtime'
 import type { ParameterDefinition, ParameterValue, PreviewRuntime } from './runtime'
@@ -260,7 +260,7 @@ function App() {
     const currentProject = projectRef.current
     setMessage('Compiling project…')
     try {
-      const runtime = currentProject.manifest.projectType === 'html'
+      const runtime = currentProject.manifest.projectType !== 'canvas2d'
         ? await startHtmlPreview(iframeRef.current!, currentProject, (nextParameters, values) => {
           if (requestId !== applyRequestRef.current) return
           setParameters(nextParameters)
@@ -442,7 +442,7 @@ function App() {
     void importDroppedFiles(Array.from(event.dataTransfer.files))
   }
 
-  const previewBaseSize: PreviewDimensions = project.manifest.projectType === 'html'
+  const previewBaseSize: PreviewDimensions = project.manifest.projectType !== 'canvas2d'
     ? htmlViewport === 'responsive'
       ? stageSize
       : (() => {
@@ -842,10 +842,10 @@ function App() {
     directoryRef.current = null
   }
 
-  const createProject = (type: 'canvas2d' | 'html' | 'three') => {
-    const template = type === 'three' ? starterThreeProject : type === 'html' ? starterHtmlProject : starterProject
+  const createProject = (type: 'canvas2d' | 'html' | 'react' | 'three') => {
+    const template = type === 'three' ? starterThreeProject : type === 'react' ? starterReactProject : type === 'html' ? starterHtmlProject : starterProject
     loadProjectCopy(structuredClone(template))
-    setMessage(`${type === 'three' ? 'Three.js' : type === 'html' ? 'HTML/CSS' : 'Canvas2D'} project created`)
+    setMessage(`${type === 'three' ? 'Three.js' : type === 'react' ? 'React + TypeScript' : type === 'html' ? 'HTML/CSS' : 'Canvas2D'} project created`)
     setNewProjectOpen(false)
   }
 
@@ -1016,18 +1016,18 @@ function App() {
           <div className="splitter" onPointerDown={dragSplit} role="separator" aria-label="Resize editor and preview" />
           <div className={`preview-column ${consoleOpen ? '' : 'console-collapsed'}`}>
             <div className={`preview-panel ${previewFullscreen ? 'preview-fullscreen' : ''}`}>
-              <div className="panel-heading"><div className="heading-label"><span className="live-indicator" /><span>{project.manifest.projectType === 'html' ? 'PAGE PREVIEW' : 'CANVAS PREVIEW'}</span><span className="dimensions">{Math.round(previewBaseSize.width)} × {Math.round(previewBaseSize.height)}</span></div><div className="preview-controls">
-                {project.manifest.projectType === 'html' && <select className="viewport-select" aria-label="HTML viewport size" value={htmlViewport} onChange={(event) => setHtmlViewport(event.target.value)}><option value="responsive">Responsive</option><option value="1440x900">Desktop · 1440 × 900</option><option value="1024x768">Laptop · 1024 × 768</option><option value="768x1024">Tablet · 768 × 1024</option><option value="390x844">Mobile · 390 × 844</option></select>}
+              <div className="panel-heading"><div className="heading-label"><span className="live-indicator" /><span>{project.manifest.projectType === 'canvas2d' ? 'CANVAS PREVIEW' : project.manifest.projectType === 'react' ? 'REACT PREVIEW' : 'PAGE PREVIEW'}</span><span className="dimensions">{Math.round(previewBaseSize.width)} × {Math.round(previewBaseSize.height)}</span></div><div className="preview-controls">
+              {project.manifest.projectType !== 'canvas2d' && <select className="viewport-select" aria-label="Page viewport size" value={htmlViewport} onChange={(event) => setHtmlViewport(event.target.value)}><option value="responsive">Responsive</option><option value="1440x900">Desktop · 1440 × 900</option><option value="1024x768">Laptop · 1024 × 768</option><option value="768x1024">Tablet · 768 × 1024</option><option value="390x844">Mobile · 390 × 844</option></select>}
                 <select className="zoom-select" aria-label="Preview zoom" value={previewZoom} onChange={(event) => setPreviewZoom(event.target.value)}><option value="fit">Fit</option>{[25, 50, 75, 100, 125, 150, 200].map((zoom) => <option key={zoom} value={zoom.toString()}>{zoom}%</option>)}</select><span className="zoom-readout">{Math.round(displayedZoom * 100)}%</span>
                 <button className="icon-button" onClick={toggleRuntime} title={status === 'paused' ? 'Resume' : 'Pause'}>{status === 'paused' ? <Play size={14} /> : <Square size={13} />}</button><button className="icon-button" onClick={resetRuntime} title="Reset simulation"><RotateCcw size={14} /></button><button className="icon-button" onClick={() => setPreviewFullscreen((value) => !value)} title={previewFullscreen ? 'Exit expanded preview' : 'Expand preview'} aria-label={previewFullscreen ? 'Exit expanded preview' : 'Expand preview'}>{previewFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}</button>
               </div></div>
-              <div ref={stageRef} className={`canvas-stage ${previewReady ? 'has-preview' : ''} ${project.manifest.projectType === 'html' ? 'html-stage' : ''}`}>
+              <div ref={stageRef} className={`canvas-stage ${previewReady ? 'has-preview' : ''} ${project.manifest.projectType !== 'canvas2d' ? 'html-stage' : ''}`}>
                 <div className="preview-frame" style={previewFrameStyle}><div className="preview-content" style={previewContentStyle}>
-                  {project.manifest.projectType === 'html' ? <iframe ref={iframeRef} title="HTML project preview" sandbox="allow-scripts" /> : <canvas ref={canvasRef} aria-label="Canvas2D animation preview" />}
+                  {project.manifest.projectType !== 'canvas2d' ? <iframe ref={iframeRef} title="Project preview" sandbox="allow-scripts" /> : <canvas ref={canvasRef} aria-label="Canvas2D animation preview" />}
                 </div></div>
                 <div className="canvas-empty"><Activity size={17} /><span>Apply code to start the preview</span></div>
               </div>
-              <div className="preview-footer"><span>{status === 'running' ? 'LIVE' : status.toUpperCase()}</span><span>{project.manifest.projectType === 'html' ? 'HTML / CSS' : 'CANVAS2D'}</span></div>
+              <div className="preview-footer"><span>{status === 'running' ? 'LIVE' : status.toUpperCase()}</span><span>{project.manifest.projectType === 'canvas2d' ? 'CANVAS2D' : project.manifest.projectType === 'react' ? 'REACT' : 'HTML / CSS'}</span></div>
             </div>
             <section className={`console-panel ${consoleOpen ? '' : 'collapsed'}`}>
               <div className="console-heading"><button className="console-title" onClick={() => setConsoleOpen((open) => !open)}>{consoleOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}<span>OUTPUT</span></button><span className={`console-status ${status}`}>{status === 'error' ? <AlertCircle size={13} /> : <Check size={13} />}{status}</span></div>
@@ -1037,8 +1037,8 @@ function App() {
         </section>
       </div>
 
-      <footer className="statusbar"><div><span className={`status-dot ${status}`} />{status === 'running' ? 'Running' : status === 'paused' ? 'Paused' : status === 'error' ? 'Build failed' : 'Idle'}<span className="status-divider" />{activeFile}</div><div><span>{project.manifest.projectType === 'html' ? 'HTML / CSS' : 'Canvas2D'}</span><span className="status-divider" /><span>Project format v1</span></div></footer>
-      {newProjectOpen && <div className="dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setNewProjectOpen(false) }}><section className="new-project-dialog" role="dialog" aria-modal="true" aria-labelledby="new-project-title"><div className="dialog-heading"><div><span className="dialog-eyebrow">START A STUDY</span><h2 id="new-project-title">New project</h2></div><button className="icon-button" onClick={() => setNewProjectOpen(false)} title="Close"><X size={16} /></button></div><div className="project-choices"><button className="project-choice" onClick={() => createProject('canvas2d')}><span className="choice-icon canvas-choice"><Activity size={18} /></span><span><strong>Canvas2D</strong><small>TypeScript scene with a frame loop</small></span><ChevronRight size={16} /></button><button className="project-choice" onClick={() => createProject('html')}><span className="choice-icon html-choice"><FileCode2 size={18} /></span><span><strong>HTML + CSS</strong><small>A page for small visual experiments</small></span><ChevronRight size={16} /></button><button className="project-choice" onClick={() => createProject('three')}><span className="choice-icon three-choice"><Box size={18} /></span><span><strong>Three.js</strong><small>WebGL scene with a local glTF model</small></span><ChevronRight size={16} /></button></div></section></div>}
+      <footer className="statusbar"><div><span className={`status-dot ${status}`} />{status === 'running' ? 'Running' : status === 'paused' ? 'Paused' : status === 'error' ? 'Build failed' : 'Idle'}<span className="status-divider" />{activeFile}</div><div><span>{project.manifest.projectType === 'canvas2d' ? 'Canvas2D' : project.manifest.projectType === 'react' ? 'React + TS' : 'HTML / CSS'}</span><span className="status-divider" /><span>Project format v1</span></div></footer>
+      {newProjectOpen && <div className="dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setNewProjectOpen(false) }}><section className="new-project-dialog" role="dialog" aria-modal="true" aria-labelledby="new-project-title"><div className="dialog-heading"><div><span className="dialog-eyebrow">START A STUDY</span><h2 id="new-project-title">New project</h2></div><button className="icon-button" onClick={() => setNewProjectOpen(false)} title="Close"><X size={16} /></button></div><div className="project-choices"><button className="project-choice" onClick={() => createProject('canvas2d')}><span className="choice-icon canvas-choice"><Activity size={18} /></span><span><strong>Canvas2D</strong><small>TypeScript scene with a frame loop</small></span><ChevronRight size={16} /></button><button className="project-choice" onClick={() => createProject('html')}><span className="choice-icon html-choice"><FileCode2 size={18} /></span><span><strong>HTML + CSS</strong><small>A page for small visual experiments</small></span><ChevronRight size={16} /></button><button className="project-choice" onClick={() => createProject('react')}><span className="choice-icon html-choice"><FileCode2 size={18} /></span><span><strong>React + TypeScript</strong><small>Multi-file component study</small></span><ChevronRight size={16} /></button><button className="project-choice" onClick={() => createProject('three')}><span className="choice-icon three-choice"><Box size={18} /></span><span><strong>Three.js</strong><small>WebGL scene with a local glTF model</small></span><ChevronRight size={16} /></button></div></section></div>}
       {pendingCurveDelete && <div className="dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setPendingCurveDelete(null) }}><section className="new-project-dialog curve-delete-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-curve-title"><div className="dialog-heading"><div><span className="dialog-eyebrow">CURVE RESOURCE</span><h2 id="delete-curve-title">Delete {project.manifest.curves?.find((curve) => curve.id === pendingCurveDelete)?.name}</h2></div><button className="icon-button" onClick={() => setPendingCurveDelete(null)} title="Close"><X size={16} /></button></div>{curveReferences(pendingCurveDelete).length ? <><p>This curve is sampled in <code>{curveReferences(pendingCurveDelete).join(', ')}</code>. Choose a replacement before deleting it.</p><label>REPLACE WITH<select value={curveReplacementId} onChange={(event) => setCurveReplacementId(event.target.value)}>{(project.manifest.curves ?? []).filter((curve) => curve.id !== pendingCurveDelete).map((curve) => <option key={curve.id} value={curve.id}>{curve.name} · {curve.id}</option>)}</select></label></> : <p>This curve has no literal <code>curves.sample(...)</code> references in project source.</p>}<div className="draft-actions"><button className="tool-button" onClick={() => setPendingCurveDelete(null)}>Cancel</button><button className="tool-button danger-action" disabled={curveReferences(pendingCurveDelete).length > 0 && !curveReplacementId} onClick={() => void confirmRemoveCurve()}><Trash2 size={13} />Delete curve</button></div></section></div>}
       {draftPrompt && <div className="dialog-backdrop"><section className="new-project-dialog draft-dialog" role="dialog" aria-modal="true" aria-labelledby="draft-title"><div className="dialog-heading"><div><span className="dialog-eyebrow">UNSAVED WORK</span><h2 id="draft-title">Recover this draft?</h2></div></div><p>{draftPrompt.project.manifest.name} · {new Date(draftPrompt.savedAt).toLocaleString()}</p><div className="draft-actions"><button className="tool-button" onClick={discardDraft}>Discard</button><button className="tool-button primary-action" onClick={recoverDraft}>Recover draft</button></div></section></div>}
       {examplesOpen && <ExamplesDialog hasUnsavedChanges={!saved} onClose={() => setExamplesOpen(false)} onOpen={openExample} />}

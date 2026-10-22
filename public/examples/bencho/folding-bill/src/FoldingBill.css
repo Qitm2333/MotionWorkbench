@@ -1,0 +1,12 @@
+/* ══ Folding bill (lab/FoldingBill.tsx) ═════════════════════════
+   The canvas is three.js's own; touch-action off so a finger
+   folds the bill rather than scrolling the page. */
+.fbill { position: relative; }
+
+.fbill-gl { display: block; position: absolute; }
+
+.fbill-gl { touch-action: none; cursor: default; }
+
+.fbill-gl[data-over="true"] { cursor: grab; }
+
+.fbill-gl[data-held="true"] { cursor: grabbing; }

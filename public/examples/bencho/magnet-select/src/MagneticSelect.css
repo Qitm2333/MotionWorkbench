@@ -1,0 +1,142 @@
+/* ══ Magnetic select ════════════════════════════════════════
+   A cluster of chips that get out of the selected one's way.
+
+   TWO ELEMENTS, TWO TRANSFORMS. The chip is placed by left/top
+   and moved by Framer's transform; the skin inside it carries
+   the CSS hover. They cannot share an element: CSS `scale` and
+   `translate` are applied BEFORE `transform` rather than
+   folded into it, so a rule here and a spring there do not
+   average out, they fight every frame. So nothing in this file
+   may set or transition a transform on .mag-chip, and the
+   transitions below name their properties one at a time —
+   a `transition: all` would sweep the transform up with the
+   colours. */
+.mag {
+  position: relative;
+  box-sizing: border-box;
+  font-family: var(--font-ui);}
+
+/* the chip is a POSITION and nothing else: no surface, no
+   corner, no colour. Everything you can see is the skin */
+.mag-chip {
+  position: absolute;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;}
+
+.mag-skin {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* always round, and it is not a knob. A Corner control was
+     here and it earned its removal: at 0 the chips are squares
+     packed 4px apart on a hex lattice, which is a honeycomb
+     made of the one shape that does not tile it — every pair
+     that is not side by side meets corner to flat and the
+     even spacing stops looking even. The tilt gives it away
+     too: a rotated square sweeps a wider box than it occupies
+     and eats the clearance, where a rotated circle is a
+     circle and costs nothing. */
+  border-radius: 50%;
+  /* ── plain, until it is the one ─────────────────────────
+     An unchosen chip is a blank disc: the slab, which is white
+     on the light theme and the dark theme's own equivalent, so
+     it reads as an empty circle either way rather than as a
+     colour somebody chose. The picture belongs to the answer,
+     not to the options. */
+  background: var(--fill-slab, var(--card));
+  /* the pictures fill the chip, so they are what the corner
+     cuts — the skin is the only thing that knows it is round */
+  overflow: hidden;
+  /* ── the hover, borrowed from the search block ───────────
+     Its own note puts it best: it comes up a hair, and it is
+     small enough to be felt rather than seen, because a hover
+     state you NOTICE is a hover state that has said too much.
+     Same 1.045 and the same curve, so the two blocks answer a
+     cursor identically — and the surface answers with it,
+     which is the part that stops 4.5% reading as a twitch.
+
+     Deliberately not a spring. The field springs; this does
+     not. A hover that bounces is the cursor being celebrated,
+     and the cursor has not done anything yet. */
+  /* ── the lean, and nothing else ──────────────────────────
+     One transform, doing one thing. It carried a hover swell
+     as well until that was removed — see the note below.
+
+     The 260ms is what makes a value changing every frame read
+     as damping rather than as tracking. Same curve and same
+     duration as the search field, because it is the same
+     gesture. */
+  transform: translate(var(--lx, 0px), var(--ly, 0px));
+  transition:
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 220ms ease,
+    color 220ms ease;}
+
+/* ── NOTHING ANSWERS A CURSOR ON ITS OWN ──────────────────
+   There was a swell here: hover a chip and that chip grew
+   4.5%. It is the ordinary thing to do and it is wrong for
+   this component twice over.
+
+   It is the only per-item response left, and it was the one
+   you could see — a 4.5% swell on a 44px disc reads louder
+   than the whole group leaning two to seven pixels, so the
+   cluster looked like it was answering one chip at a time
+   when the lean had already been made the group's.
+
+   And it cannot be made group-wide, which is the deeper
+   reason. A lean is a translation: apply it to every chip and
+   the spacing is untouched. A swell is a scale, and scaling a
+   cluster about its centre moves every chip away from every
+   other — 4.5% across a 45px pitch is two pixels of gap
+   opening on a cluster packed one pixel off touching. The
+   gaps have to stay equal, so the only honest answer is that
+   the hover does not resize anything at all.
+
+   What the cursor still gets is the tone: the chip under it
+   comes up a little, which is a change of ink rather than of
+   geometry and costs the packing nothing. */
+.mag-chip:hover .mag-skin {
+  background: color-mix(in srgb, var(--fill-on, #17181a) 12%, transparent);}
+
+/* ── the chosen one is the only one with a PICTURE ─────────
+   The others were drained to almost no saturation, which is a
+   photograph you can still see and therefore still read as
+   content — seven pictures, one of them brighter. Off
+   entirely, the cluster is a set of blank discs and one
+   answer, which is what a chooser is.
+
+   240ms either way, so a selection crossing the cluster is one
+   picture arriving as another leaves rather than a cut. */
+.mag-skin .mag-mark {
+  opacity: 0;
+  transition: opacity 220ms ease;}
+
+.mag-chip[data-on] .mag-skin .mag-mark { opacity: 1; }
+
+/* the selected one lifts too — it is a circle you can point
+   at like any other — but its surface is already the ink and
+   has nowhere to go, so only the scale answers */
+.mag-chip[data-on]:hover .mag-skin {
+  background: var(--ink);
+  color: var(--card);}
+
+[data-stroke="on"] .mag-skin {
+  box-shadow: inset 0 0 0 1px var(--pane-edge);}
+
+/* the picture IS the chip: it fills the skin and the skin's
+   own corner cuts it, so there is no second radius to keep in
+   agreement with the first */
+.mag-mark {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;}
+
+@media (prefers-reduced-motion: reduce) {
+  .mag-skin { transition-duration: 160ms; }
+}

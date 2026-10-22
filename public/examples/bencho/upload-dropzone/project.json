@@ -1,0 +1,29 @@
+{
+  "formatVersion": 1,
+  "name": "Upload dropzone",
+  "entry": "index.html",
+  "projectType": "react",
+  "renderer": {
+    "type": "react"
+  },
+  "dependencies": {
+    "react": "19.3.1",
+    "framer-motion": "13.5.1",
+    "lucide-react": "1.60.0"
+  },
+  "sourceFiles": [
+    "index.html",
+    "src/App.tsx",
+    "src/main.tsx",
+    "src/app.css",
+    "src/Upload.tsx",
+    "src/Upload.css",
+    "src/tokens.css"
+  ],
+  "metadata": {
+    "upstreamBlock": "upload-dropzone",
+    "license": "MIT",
+    "compatibility": "imported-unverified",
+    "source": "cabralorenzo/bencho"
+  }
+}

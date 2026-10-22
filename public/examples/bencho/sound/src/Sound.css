@@ -1,0 +1,484 @@
+@media (prefers-reduced-motion: reduce) {
+  .snd-op, .snd-art, .snd-like { transition-duration: 160ms; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .snd-like[data-on] .lucide { animation: none; }
+}
+
+/* ══ Sound board ════════════════════════════════════════════
+   A canvas tool, not a component: twelve keys, numbered by
+   their order in site/sound.ts, so a voice can be auditioned
+   and then referred to by number. */
+.snd {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 460px;
+  font-family: var(--font-ui);}
+
+.snd-wake {
+  align-self: flex-start;
+  height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--slab);
+  color: var(--on-slab);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  letter-spacing: 0em;}
+
+.snd-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;}
+
+.snd-key {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 4px;
+  /* 78, and it was 62. The key gained a band at the foot for
+     the waveform, and the number and name above it did not
+     move — growing the key is what kept them where they were,
+     rather than tightening three things to fit a fourth in the
+     same box. */
+  height: 75px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--fill-on, #17181a) 6%, transparent);
+  cursor: pointer;
+  transition: background 160ms ease, transform 160ms cubic-bezier(0.24, 1.34, 0.38, 1);}
+
+.snd-key:hover { background: color-mix(in srgb, var(--fill-on, #17181a) 12%, transparent); }
+
+.snd-key:active { transform: scale(0.96); }
+
+/* the one that carries a position says so — drag across it */
+.snd-key[data-pitched] { background: color-mix(in srgb, var(--fill-on, #17181a) 6%, transparent); cursor: ew-resize; }
+
+.snd-key[data-pitched]:hover { background: color-mix(in srgb, var(--fill-on, #17181a) 12%, transparent); }
+
+.snd-num {
+  font-family: var(--font-ui);
+  font-size: 16px;
+  line-height: 1;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;}
+
+.snd-name {
+  font-size: 11px;
+  letter-spacing: 0em;
+  color: var(--ink-4);}
+
+/* name on the left, length on the right, one row */
+.snd-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;}
+
+/* Quieter than the name and in the figure face, because it is
+   a measurement sitting next to a label and the two should not
+   read as equals. Tabular, so 38ms and 360ms line up down the
+   column and the eye can compare them without reading. */
+.snd-ms {
+  flex: none;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--ink-5);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0em;}
+
+/* ── the waveform ──────────────────────────────────────────
+   A band across the foot of the key. Stretched to the key's
+   width rather than letting the bars keep their ratio: the
+   strip is a shape to compare against its neighbours, and
+   eight of them at different widths would be a worse picture
+   than eight stretched the same amount.
+
+   --ink-4 and not --ink: it sits under the name and must not
+   outrank the number, which is the thing you actually press
+   the key by. It lifts with the key on hover, like everything
+   else in here. */
+.snd-wave {
+  align-self: stretch;
+  width: 100%;
+  height: 18px;
+  margin-top: 1px;
+  /* --ink-3 at 0.8, and it was --ink-4 at 0.55. At the key's
+     real size a 22-bar strip is about three pixels a bar, and
+     a light grey at half opacity across three pixels is a
+     smudge — it read as a hairline rather than as a waveform.
+     Still under the number, which is what you press the key
+     by; no longer under the threshold of being seen. */
+  fill: var(--ink-3);
+  opacity: 0.8;
+  pointer-events: none;
+  transition: opacity 160ms ease;}
+
+.snd-key:hover .snd-wave { opacity: 1; }
+
+/* ══ Sound ══════════════════════════════════════════════════
+   A now-playing bar that opens into a player.
+
+   There is almost nothing here, and that is deliberate: every
+   position, size and radius in this component is written by
+   the spring in Sound.tsx and arrives as an inline style. A
+   transition on any of these rules would be a SECOND opinion
+   about where a thing is, fighting the first one every frame.
+
+   What is left is the material — the surfaces, the type and
+   the two hover states — which never animates with the shape
+   and so has nothing to fight. */
+
+.snd {
+  position: relative;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-ui);}
+
+/* The object. It is the only thing on the card, so it is the
+   quietest surface that still reads as one: the pane the rest
+   of the bench uses, and a hairline. */
+.snd-box {
+  position: relative;
+  background: var(--pane);
+  -webkit-backdrop-filter: blur(2px) saturate(150%);
+  backdrop-filter: blur(2px) saturate(150%);
+  overflow: hidden;}
+
+/* NO BORDER of its own. The hairline is the Stroke control's
+   to give, the way it is for every other block — a spread
+   shadow rather than a border, because the box has
+   `overflow: hidden` and a border would be one more thing the
+   morph has to carry through every frame. See the Stroke
+   section above. */
+[data-stroke="on"] .snd-box { box-shadow: 0 0 0 1px var(--pane-edge); }
+
+/* ── the cover ──────────────────────────────────────────────
+   A real sleeve, inlined by scripts/cover.sh. It was drawn in
+   CSS first, on the reasoning that the morph is about the
+   SQUARE rather than about what is printed on it — which is
+   true of the animation and not true of the component: a
+   player with a grey gradient where the artwork goes is a
+   wireframe of a player.
+
+   `cover`, not `contain`: the square is the fixed thing here
+   and the picture is cropped to it, so the sleeve is never
+   letterboxed at either end of the morph.
+
+   The gradient stays underneath as the ground. It is what
+   shows for the frame before a 464px image has decoded, and
+   it is what the shape is if the file is ever missing. */
+.snd-art {
+  position: absolute;
+  background-color: var(--surface-2);
+  background-image:
+    linear-gradient(148deg, var(--surface-3), var(--surface-2));
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;}
+
+/* ── the words ──────────────────────────────────────────────
+   One block that travels from beside the cover to under it.
+   Both lines are in it, so the pair moves as a unit and the
+   artist never arrives before the title. */
+/* ── the words ──────────────────────────────────────────────
+   Centred by the BOX, not by a number. It used to be placed
+   by its top edge against a hard-coded guess at how tall two
+   lines of type are — which was right until the type sizes
+   changed, and then the words sat 1.8px above the middle of
+   the sleeve at one end of the morph and somewhere else at
+   the other.
+
+   Now it is given the sleeve's own height and told to centre
+   inside it, so the two are level at every size the morph
+   passes through and nothing has to be kept in step by hand.
+   Two magic numbers gone with it. */
+.snd-say {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  pointer-events: none;}
+
+.snd-title {
+  color: var(--ink);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;}
+
+.snd-by {
+  color: var(--ink-4);
+  line-height: 1.25;
+  white-space: nowrap;}
+
+/* ── the track ──────────────────────────────────────────────
+   A rail and a run, and the times at either end under it.
+   Nothing here is interactive: this component is about the
+   shape changing, and a scrubber you can drag is a different
+   component that happens to live in the same box. */
+.snd-bar {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;}
+
+.snd-rail {
+  display: block;
+  height: 3px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fill-on, #17181a) 12%, transparent);
+  overflow: hidden;}
+
+.snd-run {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--ink);}
+
+.snd-clock {
+  display: flex;
+  justify-content: space-between;
+  /* ── the interface face, with tabular figures ─────────────
+     It was the mono stack, for the reason clocks usually are:
+     a proportional 1 is narrower than a 0, so a counter set in
+     one shifts on its own every second — which on a track
+     that reads 0:57 → 0:58 → 0:59 is a number that fidgets
+     while you watch it.
+
+     `tabular-nums` is the same guarantee without the second
+     typeface. It asks the UI font for its fixed-width figures,
+     which it has, so the digits stop moving and the component
+     stops carrying a face nothing else here uses. */
+  font-family: var(--font-ui);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  /* 1, so the row is the height of the digits and not of the
+     font's own leading — nineteen pixels for a ten pixel
+     number is eight of empty space the layout above has to
+     find room for */
+  line-height: 1;
+  letter-spacing: 0em;
+  color: var(--ink-4);}
+
+/* ── the transport ──────────────────────────────────────────
+   Placed by its CENTRE — the row's own width changes between
+   the two states, so an edge would move even when the middle
+   of it did not. */
+.snd-ops {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  translate: -50% -50%;}
+
+.snd-op {
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-3);
+  cursor: pointer;
+  overflow: hidden;
+  transition: color 160ms ease, background 160ms ease, scale 160ms cubic-bezier(0.22, 1, 0.36, 1);}
+
+.snd-op:hover { color: var(--ink); background: color-mix(in srgb, var(--fill-on, #17181a) 6%, transparent); }
+
+/* ── the press ──────────────────────────────────────────────
+   It yields before it acts. A control that only changes state
+   reads as having been triggered; one that gives under the
+   finger first reads as having been pushed, and the whole
+   difference is about 40ms and four per cent.
+
+   `scale` as its own property, not inside a transform: the
+   row is placed with `translate` and the play button's size
+   is written by the tween, so anything sharing the transform
+   shorthand here would be overwritten every frame. */
+.snd-op:active { scale: 0.96; }
+
+/* the one you press most, and the only one that is filled */
+.snd-op[data-lead] {
+  background: var(--ink);
+  color: var(--on-ink);}
+
+.snd-op[data-lead]:hover { background: var(--ink); opacity: 0.88; }
+
+.snd-op:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--card), 0 0 0 4px rgba(var(--ink-rgb), 0.35);}
+
+/* ── the heart ──────────────────────────────────────────────
+   Built off .snd-op rather than sharing it: it is the same
+   size and the same give, but it is not in the transport row
+   and it is the only control here that stays on after you let
+   go — so it needs a state the row has no use for.
+
+   Ink when it is on, not red. A heart is already the shape
+   that carries the meaning, so the colour has only one job
+   left — to say FILLED — and the loudest ink on the block is
+   what does that without introducing a hue nothing else here
+   uses. It also puts the heart at the same weight as the play
+   button, which is the other solid mark on the card, so the
+   two read as the same kind of thing rather than as a control
+   and a warning. */
+.snd-like {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-3);
+  cursor: pointer;
+  transition: color 160ms ease, background 160ms ease,
+    scale 160ms cubic-bezier(0.22, 1, 0.36, 1);}
+
+.snd-like:hover { color: var(--ink); background: color-mix(in srgb, var(--fill-on, #17181a) 6%, transparent); }
+
+.snd-like:active { scale: 0.96; }
+
+.snd-like[data-on] { color: var(--ink); }
+
+.snd-like[data-on]:hover { color: var(--ink); background: color-mix(in srgb, var(--fill-on, #17181a) 6%, transparent); }
+
+/* ── the beat ───────────────────────────────────────────────
+   On the way ON only, which is why it is keyed to the state
+   and not to the press: unliking something does not deserve a
+   flourish, and one that plays both ways reads as a button
+   animating rather than as a thing being liked.
+
+   Overshoot is the whole effect — 1.34 and back, on a curve
+   that passes its target — so it lands as a pulse rather than
+   as a grow. */
+.snd-like[data-on] .lucide {
+  animation: snd-beat 340ms cubic-bezier(0.3, 1.4, 0.5, 1);}
+
+.snd-like:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--card), 0 0 0 4px rgba(var(--ink-rgb), 0.35);}
+
+/* the hit area, and nothing else — see the note in Sound.tsx */
+.snd-tap {
+  position: absolute;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;}
+
+/* the cover gives too — it is the thing you press to change
+   the shape, so it should answer the same way the transport
+   does. Scoped to the ART, not to this: the hit area is
+   invisible and scaling nothing looks like nothing. */
+.snd-box:has(.snd-tap:active) .snd-art { scale: 0.96; }
+
+.snd-art { transition: scale 160ms cubic-bezier(0.22, 1, 0.36, 1); }
+
+.snd-tap:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--card), 0 0 0 4px rgba(var(--ink-rgb), 0.35);}
+
+/* ══ PORTED WITH THE SOUNDS PAGE ══════════════════════════
+   The whole `sfx-` section, taken across as one block and
+   appended rather than woven in, so nothing above it moved
+   and the seam is visible. It is a namespace of its own and
+   collides with nothing here: main had no sfx- rule at all.
+
+   Two strays came with it and are at the bottom: the
+   reduced-motion line for .sfx-seat, in a media query of
+   its own rather than reaching into the one upstairs, and
+   .dtl-kind.sfx-said, which is the detail overlay learning
+   one word about sounds. */
+
+
+/* ══ Sounds (the page) ══════════════════════════
+   The library wall. `sfx-` and not `snd-`, which is taken:
+   lab/Sound.tsx and lab/Sounds.tsx are two BLOCKS that own
+   that prefix, and a .snd-name here was quietly restyling one
+   of them on the other wall. One namespace, one owner.
+
+   A GRID rather than the block wall's columns. That wall packs
+   into columns because a component decides how tall its card
+   is; a sound has no height. Nine equal tiles say "nine of one
+   thing", where masonry of equal boxes is a grid with worse
+   arithmetic. */
+/* ── the families, as pills ────────────────────────────────
+   The block wall's chips are tabs: a word with a rule under
+   the chosen one, which is right over a wall that fills the
+   page and is read as a heading. This row sits over ten tiles
+   and is read as a set of buttons, so it is drawn as one —
+   a grey pill each, and the chosen one filled.
+
+   Scoped to this wall rather than changed on `.bench-chip`
+   itself: two walls, two jobs, and the Blocks filter has no
+   business changing shape because this one wanted pills.
+
+   FILLED IS `--slab`, not `--ink`. That pair is what this
+   bench uses for anything large and solid, and it does not
+   invert: on the dark page `--ink` would make the chosen pill
+   a near-white lozenge, the brightest thing on a page of soft
+   grey tiles, for the mildest fact on it. See the note on
+   filled blocks in index.css. */
+/* tighter than the tab row it borrows from: `.bench-chips`
+   holds its words 24 apart because a gap is the only thing
+   separating them there. These have an edge each, so the gap
+   is only a gap — at 24 the row read as nine separate
+   controls rather than as one set of nine. Two classes, so
+   this beats the 24 whichever order the two rules land in. */
+/* ── and the row stands clear of the wall ─────────────────
+   The tiles are 12 apart, so a row sitting the same distance
+   above them reads as another row of the grid rather than as
+   the control over it. 16 is half a tile-gap more than that:
+   enough to be a different thing, and no more, because the
+   pills are about the wall directly under them. */
+/* ══ a wall's lede ═════════════════════════════════════════
+   One headline and a line under it, above the family row.
+
+   NOT .sfx- any more. It was named for the sound wall because
+   that is where it was built, and the finds wall wears the
+   same two lines now — a class named after the first page to
+   need it is a class the second page has to explain.
+
+   The body type comes from .hero-sub — see the note in
+   Sounds.tsx on why it borrows that rather than restating its
+   numbers. What is here is the spacing and the centring, which
+   are the things that genuinely differ: the blocks hero opens
+   a landing page and this opens a tab you have already chosen,
+   so it sits closer to the bar and gives the wall back the
+   difference. */
+.bench-lede {
+  /* ── air, and it is bought from the wall ────────────────
+     24px clear of the bar and 26 to the chips was the lede
+     sitting between two things it belonged to neither of. At
+     60 and 56 it is its own band: the wall starts lower, which
+     on a tab you have already chosen is a fair price for the
+     page having an opening rather than just a first row.
+
+     .bench-body already lays 92px under the floating bar — 72
+     of bar and 20 of its own — so the 40 here is what clears
+     it, not the whole distance. Changing the bar's height
+     moves this with it. */
+  margin: 40px 0 56px;
+  text-align: center;}
+
+@keyframes snd-beat {
+  0% { scale: 1; }
+  38% { scale: 1.34; }
+  100% { scale: 1; }}

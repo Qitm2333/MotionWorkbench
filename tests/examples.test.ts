@@ -16,6 +16,30 @@ test('example starters open as independent editable copies', async () => {
   }
 })
 
+test('41 imported Bencho blocks have attributable editable React project sources', async (context) => {
+  const blocks = examples.filter((example) => example.id.startsWith('bencho-'))
+  assert.equal(blocks.length, 41)
+  const requested = new Set<string>()
+  context.mock.method(globalThis, 'fetch', async (input: string) => {
+    requested.add(input)
+    const relative = input.replace(/^\/MotionWorkbench\//, '')
+    try {
+      return new Response(await readFile(new URL(`../public/${relative}`, import.meta.url)))
+    } catch {
+      return new Response('', { status: 404 })
+    }
+  })
+  for (const example of blocks) {
+    const project = await loadExampleProject(example.id, '/MotionWorkbench/')
+    assert.equal(project.manifest.projectType, 'react', example.id)
+    assert.equal(project.manifest.metadata?.license, 'MIT', example.id)
+    assert.equal(project.manifest.metadata?.source, 'cabralorenzo/bencho', example.id)
+    assert.ok(project.files['src/App.tsx'], example.id)
+    assert.ok(project.files['src/main.tsx'], example.id)
+  }
+  assert.ok(requested.size > 200)
+})
+
 test('catalog loads complete local source under a Pages deployment prefix', async (context) => {
   const requested: string[] = []
   context.mock.method(globalThis, 'fetch', async (input: string) => {

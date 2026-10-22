@@ -1,0 +1,511 @@
+[
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Action node",
+    "id": "bencho-action-node",
+    "category": "Bencho Block",
+    "component": "ActionNode",
+    "folder": "action-node",
+    "dependencies": [
+      "lucide-react"
+    ],
+    "description": "An automation step card with its controls folded into the corner."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Aspect ratio",
+    "id": "bencho-aspect",
+    "category": "Bencho Block",
+    "component": "Aspect",
+    "folder": "aspect",
+    "dependencies": [],
+    "description": "Switch the crop between 4:3, 1:1 and 3:4, keeping the same area each time."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Asset swap",
+    "id": "bencho-asset-swap",
+    "category": "Bencho Block",
+    "component": "Swap",
+    "folder": "asset-swap",
+    "dependencies": [
+      "framer-motion",
+      "lucide-react"
+    ],
+    "description": "Flip the arrow to reverse the swap; tap a coin to pick another."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Carousel",
+    "id": "bencho-carousel",
+    "category": "Bencho Block",
+    "component": "Carousel",
+    "folder": "carousel",
+    "dependencies": [],
+    "description": "Cards on a turntable that drift, lean under your pointer and swipe round."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Checklist",
+    "id": "bencho-checklist",
+    "category": "Bencho Block",
+    "component": "Checklist",
+    "folder": "checklist",
+    "dependencies": [
+      "framer-motion"
+    ],
+    "description": "Tick a task and the box fills, the tick draws in and the words strike out."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Magnifying dock",
+    "id": "bencho-dock",
+    "category": "Bencho Block",
+    "component": "GlassDock",
+    "folder": "dock",
+    "dependencies": [
+      "lucide-react"
+    ],
+    "description": "A dock whose icons swell toward your cursor, the nearest growing most."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Dragging ball",
+    "id": "bencho-drag-ball",
+    "category": "Bencho Block",
+    "component": "Ball",
+    "folder": "drag-ball",
+    "dependencies": [
+      "framer-motion",
+      "liquid-gooey"
+    ],
+    "description": "A ball you grab: it swells under the pointer and squeezes as you hold it."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Dynamic island",
+    "id": "bencho-dynamic-island",
+    "category": "Bencho Block",
+    "component": "Island",
+    "folder": "dynamic-island",
+    "dependencies": [
+      "framer-motion",
+      "lucide-react"
+    ],
+    "description": "A live timer in a black pill: press it to grow into the full activity, and back again."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Emoji reactions",
+    "id": "bencho-emoji-reactions",
+    "category": "Bencho Block",
+    "component": "Reactions",
+    "folder": "emoji-reactions",
+    "dependencies": [
+      "framer-motion",
+      "lucide-react"
+    ],
+    "description": "Press the button and the message turns into a pill of emoji; pick one and it flies down to its reaction chip as the count rolls up."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Escape button",
+    "id": "bencho-escape",
+    "category": "Bencho Block",
+    "component": "Escape",
+    "folder": "escape",
+    "dependencies": [],
+    "description": "A button that slides away from your cursor, and then gives up."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Eye tracker",
+    "id": "bencho-eye-tracker",
+    "category": "Bencho Block",
+    "component": "Watcher",
+    "folder": "eye-tracker",
+    "dependencies": [],
+    "description": "Two eyes on a soft cube that turn to follow your cursor around the block."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Folding bill",
+    "id": "bencho-folding-bill",
+    "category": "Bencho Block",
+    "component": "FoldingBill",
+    "folder": "folding-bill",
+    "dependencies": [
+      "three"
+    ],
+    "description": "A bill you can grab, drag and fold; plain or with the dollar print."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Generate",
+    "id": "bencho-generate",
+    "category": "Bencho Block",
+    "component": "Generate",
+    "folder": "generate",
+    "dependencies": [],
+    "description": "Press Generate and an image resolves under glass, broad shapes first."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Glass bubble",
+    "id": "bencho-glass-bubble",
+    "category": "Bencho Block",
+    "component": "LiquidGlass",
+    "folder": "glass-bubble",
+    "dependencies": [],
+    "description": "Drag a ball of glass over a photo and watch it bend the picture beneath."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Heat map",
+    "id": "bencho-heat-word",
+    "category": "Bencho Block",
+    "component": "HeatWord",
+    "folder": "heat-word",
+    "dependencies": [],
+    "description": "Dots that melt into a heat map under your cursor; press for the next shape."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Image accordion",
+    "id": "bencho-image-accordion",
+    "category": "Bencho Block",
+    "component": "Accordion",
+    "folder": "image-accordion",
+    "dependencies": [],
+    "description": "Hover a photo and it opens while its neighbours give way around it."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Image compare",
+    "id": "bencho-image-compare",
+    "category": "Bencho Block",
+    "component": "Compare",
+    "folder": "image-compare",
+    "dependencies": [],
+    "description": "Drag the line to compare two pictures; flick it and it glides to the edge."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Label input",
+    "id": "bencho-label-input",
+    "category": "Bencho Block",
+    "component": "LabelInput",
+    "folder": "label-input",
+    "dependencies": [
+      "lucide-react"
+    ],
+    "description": "A field whose label lifts into the top edge as you focus it."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Like",
+    "id": "bencho-like",
+    "category": "Bencho Block",
+    "component": "Like",
+    "folder": "like",
+    "dependencies": [
+      "framer-motion",
+      "lucide-react"
+    ],
+    "description": "Press the heart and it pops with a burst while the count rolls up a digit."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Create menu",
+    "id": "bencho-liq-create",
+    "category": "Bencho Block",
+    "component": "Create",
+    "folder": "liq-create",
+    "dependencies": [
+      "framer-motion",
+      "lucide-react"
+    ],
+    "description": "Press the pill and it spreads into the create menu it was all along."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Liquid toggle",
+    "id": "bencho-liq-toggle",
+    "category": "Bencho Block",
+    "component": "Toggle",
+    "folder": "liq-toggle",
+    "dependencies": [
+      "framer-motion"
+    ],
+    "description": "A switch whose droplet stretches as it slides across the track."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Magnetic select",
+    "id": "bencho-magnet-select",
+    "category": "Bencho Block",
+    "component": "MagneticSelect",
+    "folder": "magnet-select",
+    "dependencies": [
+      "framer-motion"
+    ],
+    "description": "Press an option and it swells as the rest are pushed out of its way."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "One-time code",
+    "id": "bencho-one-time-code",
+    "category": "Bencho Block",
+    "component": "Otp",
+    "folder": "one-time-code",
+    "dependencies": [
+      "lucide-react"
+    ],
+    "description": "Six boxes that are one field: paste, autofill and backspace all just work."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Palette",
+    "id": "bencho-palette",
+    "category": "Bencho Block",
+    "component": "Palette",
+    "folder": "palette",
+    "dependencies": [
+      "lucide-react"
+    ],
+    "description": "A set of colours that go together; press for a new palette."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Particles",
+    "id": "bencho-particles",
+    "category": "Bencho Block",
+    "component": "Particles",
+    "folder": "particles",
+    "dependencies": [],
+    "description": "Dots scatter from your pointer and spring home; press for a shockwave."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Assignees",
+    "id": "bencho-picker",
+    "category": "Bencho Block",
+    "component": "Picker",
+    "folder": "picker",
+    "dependencies": [
+      "framer-motion",
+      "lucide-react"
+    ],
+    "description": "Assign people from a list and their faces stack up in the pill."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Pull to refresh",
+    "id": "bencho-pull",
+    "category": "Bencho Block",
+    "component": "Balance",
+    "folder": "pull",
+    "dependencies": [],
+    "description": "Pull the card down and it stretches; let go past the line to refresh."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Search",
+    "id": "bencho-seek",
+    "category": "Bencho Block",
+    "component": "Seek",
+    "folder": "seek",
+    "dependencies": [],
+    "description": "Press the search icon and it opens into the field as one object."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Signature pad",
+    "id": "bencho-signature",
+    "category": "Bencho Block",
+    "component": "Signature",
+    "folder": "signature",
+    "dependencies": [
+      "lucide-react"
+    ],
+    "description": "Sign it; the ink thins with speed, and Clear rewinds it stroke by stroke."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Slide to confirm",
+    "id": "bencho-slide-confirm",
+    "category": "Bencho Block",
+    "component": "SlideConfirm",
+    "folder": "slide-confirm",
+    "dependencies": [
+      "framer-motion",
+      "lucide-react"
+    ],
+    "description": "Push the handle across; past the mark it takes over and finishes itself."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Slosh slider",
+    "id": "bencho-slosh",
+    "category": "Bencho Block",
+    "component": "Slosh",
+    "folder": "slosh",
+    "dependencies": [],
+    "description": "A slider whose fill has weight: drag fast and it sloshes past the handle."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Now playing",
+    "id": "bencho-sound",
+    "category": "Bencho Block",
+    "component": "Sound",
+    "folder": "sound",
+    "dependencies": [
+      "lucide-react"
+    ],
+    "description": "A now-playing bar that opens into a full player and folds back as one."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Stacked bars",
+    "id": "bencho-stacked-bars",
+    "category": "Bencho Block",
+    "component": "StackedBars",
+    "folder": "stacked-bars",
+    "dependencies": [
+      "framer-motion"
+    ],
+    "description": "A month of visits as stacked bars; run along them and one day is ringed while a tooltip glides beside it, and Day / Week regrows the bars."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Step player",
+    "id": "bencho-step-player",
+    "category": "Bencho Block",
+    "component": "StepPlayer",
+    "folder": "step-player",
+    "dependencies": [],
+    "description": "Press play and each step fills as a bar, then eases on to the next dot."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Tilt card",
+    "id": "bencho-tilt",
+    "category": "Bencho Block",
+    "component": "Tilt",
+    "folder": "tilt",
+    "dependencies": [],
+    "description": "A photo card that sinks under your pointer instead of rising to meet it."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Time scrubber",
+    "id": "bencho-time-scrubber",
+    "category": "Bencho Block",
+    "component": "Scrub",
+    "folder": "time-scrubber",
+    "dependencies": [],
+    "description": "Drag the ruler to set a time; fling it and it coasts to the nearest step."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Toast stack",
+    "id": "bencho-toast-stack",
+    "category": "Bencho Block",
+    "component": "ToastStack",
+    "folder": "toast-stack",
+    "dependencies": [
+      "framer-motion",
+      "lucide-react"
+    ],
+    "description": "Three toasts stacked at the edge, the two behind peeking out above the front one; point at them and they spring apart into a list."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Todo tower",
+    "id": "bencho-todo-tower",
+    "category": "Bencho Block",
+    "component": "Tower",
+    "folder": "todo-tower",
+    "dependencies": [
+      "lucide-react"
+    ],
+    "description": "A to-do list stacked like bricks; take one out and the rest come down."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Upload dropzone",
+    "id": "bencho-upload-dropzone",
+    "category": "Bencho Block",
+    "component": "Upload",
+    "folder": "upload-dropzone",
+    "dependencies": [
+      "framer-motion",
+      "lucide-react"
+    ],
+    "description": "Drag a file into the box to upload it; one that is too big gets refused."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Voice note",
+    "id": "bencho-voice-note",
+    "category": "Bencho Block",
+    "component": "VoiceNote",
+    "folder": "voice-note",
+    "dependencies": [
+      "lucide-react"
+    ],
+    "description": "Hold to record a waveform, slide left to bin it, let go to play it back."
+  },
+  {
+    "renderer": "React",
+    "compatibility": "Imported; pending runtime verification",
+    "name": "Wake slider",
+    "id": "bencho-wake-slider",
+    "category": "Bencho Block",
+    "component": "WakeSlider",
+    "folder": "wake-slider",
+    "dependencies": [],
+    "description": "A range made of thin bars with no thumb; drag fast and the bars you sweep past spring up in a wake behind the hand."
+  }
+]

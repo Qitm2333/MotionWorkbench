@@ -5,6 +5,17 @@ export async function prepareHtmlProject(project: Project, compile: (project: Pr
   const directory = project.manifest.entry.split('/').slice(0, -1).join('/')
   const documentBase = `https://project.invalid/${directory ? `${directory}/` : ''}`
   const document = new DOMParser().parseFromString(files[project.manifest.entry], 'text/html')
+  if (project.manifest.projectType === 'react') {
+    for (const path of Object.keys(files).filter((candidate) => /\.css$/i.test(candidate))) {
+      const exists = [...document.querySelectorAll('link[rel="stylesheet"]')].some((link) => link.getAttribute('href')?.replace(/^\.\//, '') === path)
+      if (!exists) {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = `./${path}`
+        document.head.append(link)
+      }
+    }
+  }
   let inlineId = 0
   for (const script of document.querySelectorAll('script[type="module"]')) {
     const src = script.getAttribute('src')

@@ -1,0 +1,36 @@
+/* ══ Dragging ball ══════════════════════════════════════════
+   One circle and its tail. The well is a plain box: the ball
+   is centred in it by the grid and moved from there by
+   framer's drag, so the constraint numbers in the component
+   are distances from the middle and nothing has to be
+   measured — which matters, because every card here is drawn
+   at a fraction and a measured rect would be scaled. */
+.drg-well {
+  position: relative;
+  display: grid;
+  place-items: center;}
+
+/* undo the library's double-applied scale — see Gooey.tsx.
+   `move` measures screen pixels, so the layer it draws into
+   has to be brought back to layout ones. */
+.drg-goo > svg {
+  transform: scale(calc(1 / var(--k, 1)));
+  transform-origin: 0 0;}
+
+.drg-goo {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;}
+
+/* NO BACKGROUND. <Liquid> paints the merged silhouette behind
+   it, and a fill here would lay a hard circle on top of the
+   liquid edge exactly where the tail is trying to leave it. */
+.drg-ball {
+  grid-area: 1 / 1;
+  border-radius: 999px;
+  cursor: grab;
+  touch-action: none;
+  will-change: transform;}
+
+.drg-ball:active { cursor: grabbing; }

@@ -1,0 +1,307 @@
+/* ══ Emoji reactions ═════════════════════════════════════ */
+.rxn {
+  position: relative;
+  width: 300px;
+  /* the pill needs room above the row; the message gives it.
+     No left inset: at 16px the message fills the 300px frame
+     itself, so the block sits in the middle of its card while
+     everything in it stays left-aligned */
+  padding: 8px 0 0 0;
+  font-family: var(--font-ui);
+  color: var(--fill-on, var(--ink));}
+
+/* the name and time on their own line, then the message as a
+   pill that hugs its words */
+.rxn-msg {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;}
+
+.rxn-who {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 4px;
+  font-size: 12px;
+  letter-spacing: 0em;}
+
+.rxn-face {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  object-fit: cover;}
+
+.rxn-who b { font-weight: 500; }
+
+.rxn-who span { color: color-mix(in srgb, var(--fill-on, #17181a) 52%, var(--fill-slab, #ffffff)); }
+
+/* the message's pill, and the picker it turns into: the surface is
+   this, its width and corner sprung by the component */
+.rxn-morph {
+  position: relative;
+  /* the words sit in the middle of the pill whatever width the
+     spring is at, so a measuring pixel can never pile up on one side */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--fill-slab, var(--card));
+  border-radius: var(--rxn-r);}
+
+[data-stroke="on"] .rxn-morph { box-shadow: 0 0 0 1px var(--pane-edge); }
+
+.rxn-text {
+  display: block;
+  width: max-content;
+  padding: 0 20px;
+  font-size: 16px;
+  line-height: 22px;
+  white-space: nowrap;
+  transform-origin: 50% 50%;
+  letter-spacing: -0.01em;}
+
+.rxn-row {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  margin-top: 8px;}
+
+.rxn-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 16px 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--fill-slab, var(--card));
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 160ms ease, box-shadow 160ms ease;
+  letter-spacing: -0.01em;}
+
+/* the ones you are in carry a coloured edge — the fill stays the
+   chip's own */
+.rxn-chip[data-mine] {
+  background: var(--fill-slab, var(--card));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--signal, #2231dd) 35%, transparent);
+  color: var(--signal, #2231dd);}
+
+.rxn-chip-e { font-size: 20px; line-height: 1; transition: opacity 160ms ease; letter-spacing: -0.02em; }
+
+.rxn-chip-e[data-landing] { opacity: 0; }
+
+/* ── each emoji's own arrival ─────────────────────────────── */
+.rxn-p {
+  position: relative;
+  display: inline-block;
+  font-style: normal;
+  line-height: 1;}
+
+.rxn-p[data-play][data-k="launch"] { animation: rxn-launch 640ms cubic-bezier(0.3, 1.2, 0.4, 1); }
+
+/* its exhaust: a small puff left behind under it */
+.rxn-p[data-play][data-k="launch"]::after {
+  content: "";
+  position: absolute;
+  left: 20%;
+  top: 70%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--fill-on, #17181a) 20%, transparent);
+  animation: rxn-puff 520ms ease-out forwards;}
+
+.rxn-p[data-play][data-k="flicker"] { animation: rxn-flicker 620ms ease-out; }
+
+.rxn-p[data-play][data-k="confetti"] { animation: rxn-pop 420ms cubic-bezier(0.3, 1.6, 0.4, 1); }
+
+.rxn-bits { position: absolute; left: 50%; top: 50%; pointer-events: none; }
+
+.rxn-bits b {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  margin: -1.5px;
+  border-radius: 1px;
+  background: var(--c);
+  animation: rxn-bit 560ms cubic-bezier(0.2, 0.8, 0.3, 1) forwards;}
+
+.rxn-p[data-play][data-k="glance"] { animation: rxn-glance 700ms ease-in-out; }
+
+.rxn-p[data-play][data-k="tick"] { animation: rxn-tick 460ms cubic-bezier(0.3, 1.6, 0.4, 1); }
+
+.rxn-p[data-play][data-k="beat"] { animation: rxn-beat 620ms ease-in-out; }
+
+.rxn-p[data-play][data-k="nod"] { animation: rxn-nod 520ms cubic-bezier(0.3, 1.4, 0.4, 1); transform-origin: 50% 90%; }
+
+.rxn-p[data-play][data-k="laugh"] { animation: rxn-laugh 560ms ease-in-out; }
+
+.rxn-p[data-play][data-k="wow"] { animation: rxn-wow 520ms cubic-bezier(0.3, 1.5, 0.4, 1); transform-origin: 50% 100%; }
+
+.rxn-p[data-play][data-k="droop"] { animation: rxn-droop 700ms ease-in-out; transform-origin: 50% 100%; }
+
+.rxn-p[data-play][data-k="bow"] { animation: rxn-bow 620ms ease-in-out; transform-origin: 50% 100%; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rxn-p[data-play], .rxn-p[data-play]::after, .rxn-bits b { animation: none; }
+}
+
+.rxn-count { display: inline-flex; font-variant-numeric: tabular-nums; }
+
+.rxn-col { display: inline-block; height: 1.4em; overflow: hidden; line-height: 1.4em; }
+
+.rxn-strip {
+  display: flex;
+  flex-direction: column;
+  transition: transform 220ms cubic-bezier(0.24, 1.34, 0.38, 1);}
+
+.rxn-strip > span { height: 1.4em; }
+
+.rxn-add-wrap { display: flex; }
+
+.rxn-add {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--fill-slab, var(--card));
+  color: color-mix(in srgb, var(--fill-on, #17181a) 52%, var(--fill-slab, #ffffff));
+  cursor: pointer;
+  /* a finger holds and slides from here: no scroll, no text
+     selection, no system menu getting in the way */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  transition: color 160ms ease, scale 160ms cubic-bezier(0.24, 1.34, 0.38, 1);}
+
+.rxn-add:hover, .rxn-add[aria-expanded="true"] { color: var(--fill-on, var(--ink)); scale: 1.06; }
+
+/* the pill floats above the row, from the row's start, so it
+   never runs off the block whatever the chips have pushed the
+   button to */
+/* the emoji row, laid inside the message's pill once it has opened */
+.rxn-pill {
+  position: absolute;
+  z-index: 5;
+  left: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  /* the same 6px round the row on every side — the emoji's own
+     box is its glyph, so the air above and below is the padding
+     and nothing else */
+  padding: 8px;}
+
+.rxn-emo {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;}
+
+.rxn-emo span {
+  display: block;
+  font-size: 20px;
+  line-height: 1;
+  transform: scale(var(--s, 1));
+  transform-origin: 50% 90%;
+  /* still one at a time, but it eases up to size and back with a
+     soft settle rather than snapping */
+  transition: transform 220ms cubic-bezier(0.24, 1.34, 0.38, 1);
+  letter-spacing: -0.02em;}
+
+.rxn-tip {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  translate: -50% 0;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--slab, #17181a);
+  color: var(--on-slab, #fff);
+  font-size: 11px;
+  font-weight: 400;
+  white-space: nowrap;
+  pointer-events: none;
+  letter-spacing: 0em;}
+
+.rxn-fly {
+  position: absolute;
+  z-index: 6;
+  left: 0;
+  top: 0;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  pointer-events: none;
+  letter-spacing: -0.01em;}
+
+@keyframes rxn-launch {
+  0% { transform: translate(0, 0) rotate(0); }
+  30% { transform: translate(2px, -7px) rotate(-12deg); }
+  60% { transform: translate(-1px, 1px) rotate(4deg); }
+  100% { transform: translate(0, 0) rotate(0); }}
+
+@keyframes rxn-puff {
+  0% { opacity: 0; transform: scale(0.4); }
+  25% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-5px, 6px) scale(1.6); }}
+
+@keyframes rxn-flicker {
+  0% { transform: scale(1); filter: brightness(1); }
+  15% { transform: scale(1.18, 1.1); filter: brightness(1.35); }
+  30% { transform: scale(0.94, 1.08); filter: brightness(1); }
+  48% { transform: scale(1.1, 0.96); filter: brightness(1.25); }
+  66% { transform: scale(0.98, 1.04); }
+  100% { transform: scale(1); filter: brightness(1); }}
+
+@keyframes rxn-pop { 0% { transform: scale(0.7) rotate(-12deg); } 50% { transform: scale(1.18) rotate(6deg); } 100% { transform: none; } }
+
+@keyframes rxn-bit {
+  0% { transform: rotate(var(--a)) translateY(0) scale(1); opacity: 1; }
+  100% { transform: rotate(var(--a)) translateY(-16px) scale(0.6); opacity: 0; }}
+
+@keyframes rxn-glance {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2.5px); }
+  60% { transform: translateX(2.5px); }}
+
+@keyframes rxn-tick { 0% { transform: scale(0.6) rotate(-14deg); } 55% { transform: scale(1.2) rotate(4deg); } 100% { transform: none; } }
+
+@keyframes rxn-beat {
+  0%, 100% { transform: scale(1); }
+  15% { transform: scale(1.26); }
+  30% { transform: scale(1); }
+  45% { transform: scale(1.18); }
+  60% { transform: scale(1); }}
+
+@keyframes rxn-nod { 0% { transform: rotate(0); } 35% { transform: rotate(-16deg) translateY(-2px); } 100% { transform: rotate(0); } }
+
+@keyframes rxn-laugh {
+  0%, 100% { transform: rotate(0); }
+  20% { transform: rotate(-10deg); }
+  40% { transform: rotate(9deg); }
+  60% { transform: rotate(-7deg); }
+  80% { transform: rotate(4deg); }}
+
+@keyframes rxn-wow { 0% { transform: scale(1); } 35% { transform: scale(0.92, 1.22); } 100% { transform: scale(1); } }
+
+@keyframes rxn-droop { 0%, 100% { transform: none; } 40% { transform: translateY(2px) rotate(-8deg) scale(0.96); } }
+
+@keyframes rxn-bow { 0%, 100% { transform: none; } 40% { transform: translateY(2px) scale(1, 0.9); } 60% { transform: translateY(1px) scale(1, 0.95); } }

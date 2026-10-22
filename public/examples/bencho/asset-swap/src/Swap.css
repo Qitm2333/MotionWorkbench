@@ -1,0 +1,184 @@
+/* ══ Asset swap ════════════════════════════════════════════ */
+.swp {
+  position: relative;
+  font-family: var(--font-ui);
+  color: var(--fill-on, var(--ink));
+  overflow: hidden;
+  border-radius: var(--swp-r);}
+
+.swp-card {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 116px;
+  z-index: 1;
+  overflow: hidden;
+  border-radius: var(--swp-r);
+  background: var(--fill-slab, var(--card));}
+
+/* the slab that is open, or still shrinking home, is above the
+   other slab and the arrow */
+.swp-card[data-lifted] { z-index: 3; }
+
+/* what a slab shows, at the slab's resting height whatever the
+   slab is doing: amount and fiat low on the left, the label and
+   the coin pinned to the corners */
+.swp-face {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 116px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 0 20px 16px;}
+
+[data-stroke="on"] .swp-card { box-shadow: inset 0 0 0 1px var(--pane-edge); }
+
+.swp-label {
+  position: absolute;
+  top: 16px;
+  left: 18px;
+  font-size: 12px;
+  font-weight: 400;
+  color: color-mix(in srgb, var(--fill-on, #17181a) 32%, var(--fill-slab, #ffffff));
+  letter-spacing: 0em;}
+
+.swp-amount {
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin-bottom: 4px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;}
+
+.swp-fiat {
+  font-size: 12px;
+  color: color-mix(in srgb, var(--fill-on, #17181a) 52%, var(--fill-slab, #ffffff));
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0em;}
+
+/* the coin sits in the slab's bottom-right corner */
+.swp-coin {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 12px 0 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fill-on, #17181a) 6%, transparent);
+  font-size: 13px;
+  font-weight: 500;
+  /* a button now: it opens the picker */
+  border: 0;
+  margin: 0;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 160ms ease, scale 160ms ease;
+  -webkit-tap-highlight-color: transparent;
+  letter-spacing: 0em;}
+
+.swp-coin:hover { background: color-mix(in srgb, var(--fill-on, #17181a) 12%, transparent); }
+
+/* on the dark fill 6% of white barely separates from the slab, so
+   the pill takes more of it there */
+[data-fill="dark"] .swp-coin { background: color-mix(in srgb, var(--fill-on, #17181a) 12%, transparent); }
+
+[data-fill="dark"] .swp-coin:hover { background: color-mix(in srgb, var(--fill-on, #17181a) 12%, transparent); }
+
+.swp-coin:active { scale: 0.96; }
+
+.swp-coin:focus-visible { outline: 2px solid var(--pick); outline-offset: 2px; }
+
+.swp-logo { display: block; flex: none; }
+
+/* on the seam, floating over both slabs */
+.swp-flip {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: 117.5px; /* the middle of the gap */
+  width: 40px;
+  height: 40px;
+  margin: -20px 0 0 -20px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  color: var(--fill-on, var(--ink));
+  /* no shadow: a step darker than the slabs is what sets it apart */
+  background: color-mix(in srgb, var(--fill-on, var(--ink)) 7%, var(--fill-slab, var(--card)));
+  -webkit-tap-highlight-color: transparent;}
+
+[data-stroke="on"] .swp-flip { box-shadow: inset 0 0 0 1px var(--pane-edge); }
+
+.swp-flip:focus-visible { outline: 2px solid var(--pick); outline-offset: 2px; }
+
+.swp-pick-in {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 2px;
+  padding: 8px 12px 12px;}
+
+.swp-pick-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 32px;
+  padding-left: 12px;
+  margin-bottom: 2px;
+  font-size: 12px;
+  font-weight: 400;
+  color: color-mix(in srgb, var(--fill-on, #17181a) 52%, var(--fill-slab, #ffffff));
+  letter-spacing: 0em;}
+
+.swp-pick-x {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  padding: 0;
+  border-radius: 50%;
+  background: transparent;
+  /* a solid grey, mixed from the fill's own ink and slab, rather
+     than a translucent ink — nothing shows through it */
+  color: color-mix(in srgb, var(--fill-on, var(--ink)) 50%, var(--fill-slab, var(--card)));
+  cursor: pointer;}
+
+.swp-pick-x:hover { background: color-mix(in srgb, var(--fill-on, #17181a) 6%, transparent); color: var(--fill-on, var(--ink)); }
+
+.swp-pick-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;}
+
+.swp-pick-row:hover { background: color-mix(in srgb, var(--fill-on, #17181a) 6%, transparent); }
+
+.swp-pick-row:focus-visible { outline: 2px solid var(--pick); outline-offset: -2px; }
+
+.swp-pick-sym { font-size: 14px; font-weight: 500; letter-spacing: -0.01em; }
+
+.swp-pick-name { font-size: 13px; color: color-mix(in srgb, var(--fill-on, #17181a) 52%, var(--fill-slab, #ffffff)); letter-spacing: 0em; }
+
+.swp-pick-on { margin-left: auto; }

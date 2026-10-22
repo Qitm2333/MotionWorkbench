@@ -1,0 +1,27 @@
+{
+  "formatVersion": 1,
+  "name": "Aspect ratio",
+  "entry": "index.html",
+  "projectType": "react",
+  "renderer": {
+    "type": "react"
+  },
+  "dependencies": {
+    "react": "19.3.1"
+  },
+  "sourceFiles": [
+    "index.html",
+    "src/App.tsx",
+    "src/main.tsx",
+    "src/app.css",
+    "src/Aspect.tsx",
+    "src/Aspect.css",
+    "src/tokens.css"
+  ],
+  "metadata": {
+    "upstreamBlock": "aspect",
+    "license": "MIT",
+    "compatibility": "imported-unverified",
+    "source": "cabralorenzo/bencho"
+  }
+}

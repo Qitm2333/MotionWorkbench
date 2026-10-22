@@ -1,0 +1,65 @@
+/* ══ Image accordion ════════════════════════════════════════
+   A row of pictures cropped to slivers, one of which opens
+   under the pointer. The arithmetic of who pays for that is
+   in Accordion.tsx — five grow numbers on five springs — and
+   what is here is the box they negotiate inside and the crop
+   that keeps a photograph a photograph while it happens. */
+.acc {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  /* the strip's radius is set in the component and it is the
+     SAME number every picture takes — see RMAX in
+     Accordion.tsx. It used to be a flat 12 of its own, which
+     cut the first picture's left corners and the last one's
+     right at a radius the other three never saw.
+
+     The clip stays because flex widths land on fractions and a
+     cell can overhang its container by a sub-pixel; it is no
+     longer doing any shaping of its own. */
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+  /* a picture is not a text selection, and a finger dragged
+     across the strip should read as a hover rather than as an
+     attempt to scroll the page sideways */
+  touch-action: pan-y;}
+
+.acc-cell {
+  position: relative;
+  /* ── the grow number is the WHOLE story ──────────────────
+     `flex-basis: 0` so nothing is reserved before the
+     negotiation starts — with `auto` the pictures' own widths
+     get a vote and the grow numbers only divide what is left
+     over, which makes the same setting mean different things
+     at different counts.
+
+     And `min-width: 0`, which is the one that bites: a flex
+     item will not shrink below its content by default, and
+     the content here is an image. Without it the four
+     pictures paying for the open one stop shrinking at their
+     intrinsic width and the row overflows its own strip. */
+  flex-basis: 0;
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  /* the radius is set per cell from the gap — see RMAX in
+     Accordion.tsx — because a rounded picture against a
+     rounded picture with no air between them shows a notch of
+     page at every join */}
+
+.acc-cell img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* ── `cover`, and the height is what fixes the scale ──────
+     The strip's height never changes, and the pictures are
+     all the same ratio, so the scale `cover` picks never
+     changes either. Widening a cell therefore admits more of
+     the photograph on each side and moves nothing that was
+     already showing — which is what makes this read as a
+     window opening rather than as a picture being pulled
+     about. `contain` would letterbox and a plain width would
+     stretch; both were the wrong answer to the same question. */
+  object-fit: cover;
+  -webkit-user-drag: none;}

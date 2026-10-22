@@ -2,20 +2,24 @@ import { starterHtmlProject, starterProject, validateProject } from './project.t
 import type { Project, ProjectManifest } from './project.ts'
 import { assetMime, encodeAsset } from './assets.ts'
 import { starterThreeProject } from './threeProject.ts'
+import benchoCatalog from './benchoExamples.json' with { type: 'json' }
 
 export type Example = {
   id: string
   name: string
-  category: 'Exploration' | 'Starter'
-  renderer: 'HTML / CSS / JS' | 'Canvas2D / TypeScript' | 'Three.js / WebGL'
+  category: string
+  renderer: string
   description: string
   highlights: string[]
   projectDirectory?: string
   assetManifest?: string
   viewport?: string
+  compatibility?: string
+  source?: string
+  license?: string
 }
 
-export const examples: Example[] = [
+const existingExamples: Example[] = [
   {
     id: 'apple-duo-study',
     name: 'Apple Duo interaction study',
@@ -71,6 +75,21 @@ export const examples: Example[] = [
     highlights: ['Edit HTML and CSS as separate files.', 'Expose parameters and use their CSS custom properties.'],
   },
 ]
+
+const benchoExamples: Example[] = benchoCatalog.map((item) => ({
+  id: item.id,
+  name: item.name,
+  category: item.category,
+  renderer: item.renderer,
+  description: item.description || 'Interactive React component from the MIT-licensed Bencho Blocks collection.',
+  highlights: [item.compatibility, `Dependencies: ${item.dependencies.join(', ') || 'React'}`, 'Open as an editable React project copy.'],
+  projectDirectory: `bencho/${item.folder}`,
+  compatibility: item.compatibility,
+  source: 'cabralorenzo/bencho',
+  license: 'MIT',
+}))
+
+export const examples: Example[] = [...existingExamples, ...benchoExamples]
 
 /** Load a fresh editable copy. baseUrl includes the Vite/Pages deployment prefix. */
 export async function loadExampleProject(id: string, baseUrl: string, signal?: AbortSignal): Promise<Project> {
