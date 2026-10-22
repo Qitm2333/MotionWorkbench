@@ -5,7 +5,7 @@ import { examples, loadExampleProject } from '../src/examples.ts'
 
 test('example starters open as independent editable copies', async () => {
   assert.equal(new Set(examples.map((example) => example.id)).size, examples.length)
-  for (const id of ['orbit-study', 'motion-postcard']) {
+  for (const id of ['orbit-study', 'motion-postcard', 'three-model-study']) {
     const first = await loadExampleProject(id, '/')
     const original = first.files[first.manifest.entry]
     first.files[first.manifest.entry] = 'edited'
@@ -48,4 +48,19 @@ test('example loading reports missing files and rejects unsafe manifests before 
   assert.equal(fetchMock.mock.callCount(), 1)
   await assert.rejects(loadExampleProject('unknown-example', '/'), /Unknown example/)
   assert.equal(fetchMock.mock.callCount(), 1)
+})
+
+test('Apple example loads every local resource with a deployment prefix and retains provenance', async (context) => {
+  context.mock.method(globalThis, 'fetch', async (input: string) => {
+    assert.ok(input.startsWith('/MotionWorkbench/examples/apple-duo-study/'))
+    const bytes = await readFile(new URL(`../public/${input.slice('/MotionWorkbench/'.length)}`, import.meta.url))
+    return new Response(bytes)
+  })
+  const project = await loadExampleProject('apple-duo-study', '/MotionWorkbench/')
+  assert.equal(Object.keys(project.files).length, 5)
+  assert.equal(Object.keys(project.assets!).length, 329)
+  assert.equal(project.manifest.assetFiles!.length, 329)
+  assert.ok(project.assets!['EVIDENCE.md'])
+  assert.ok(project.assets!['assets/scenes/iPhoneDuo_ROW_L_avif.lsd'])
+  assert.ok(project.assets!['assets/scenes/iPhoneDuo_ROW_S_avif.lsd'])
 })

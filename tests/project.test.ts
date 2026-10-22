@@ -2,15 +2,25 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createCurveFromPreset, curvePresets, readProjectDirectory, sampleCurveValue, starterProject, starterHtmlProject, validateProject, writeProjectDirectory } from '../src/project.ts'
 import type { DirectoryHandle } from '../src/project.ts'
+import { starterThreeProject } from '../src/threeProject.ts'
+import { decodeAsset, encodeAsset } from '../src/assets.ts'
 
 class MemoryFile {
   readonly kind = 'file'
-  contents: string
-  constructor(contents: string) { this.contents = contents }
-  async getFile() { return { text: async () => this.contents } }
+  contents: string | Uint8Array
+  constructor(contents: string | Uint8Array) { this.contents = contents }
+  async getFile() {
+    return {
+      text: async () => typeof this.contents === 'string' ? this.contents : new TextDecoder().decode(this.contents),
+      arrayBuffer: async () => {
+        const bytes = typeof this.contents === 'string' ? new TextEncoder().encode(this.contents) : this.contents
+        return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+      },
+    }
+  }
   async createWritable() {
     return {
-      write: async (contents: string) => { this.contents = contents },
+      write: async (contents: string | Uint8Array) => { this.contents = contents },
       close: async () => {},
     }
   }
@@ -112,7 +122,7 @@ test('saving removes only stale sources listed in the previous manifest', async 
   assert.equal(root.children.has('styles.css'), false)
   assert.equal((root.children.get('nested') as MemoryDirectory).children.has('old.css'), false)
   assert.equal(root.children.has('notes.css'), true)
-  const writtenManifest = JSON.parse((root.children.get('project.json') as MemoryFile).contents)
+  const writtenManifest = JSON.parse((root.children.get('project.json') as MemoryFile).contents as string)
   assert.deepEqual(writtenManifest.sourceFiles, ['index.html'])
 })
 
@@ -130,4 +140,42 @@ test('opening a plain HTML folder creates a compatible project manifest', async 
   assert.equal(project.manifest.entry, 'index.html')
   assert.equal(project.manifest.name, 'catalog-repro')
   assert.deepEqual(Object.keys(project.files).sort(), ['index.html', 'src/main.js', 'style.css'])
+})
+
+test('binary assets round trip through folders and portable JSON without changing bytes', async () => {
+  const root = new MemoryDirectory()
+  const project = structuredClone(starterThreeProject)
+  const bytes = Uint8Array.from({ length: 262144 }, (_, index) => index % 256)
+  project.assets!['assets/nested/model space.glb'] = encodeAsset(bytes.buffer, 'model/gltf-binary')
+  await writeProjectDirectory(root as unknown as DirectoryHandle, project)
+  const loaded = await readProjectDirectory(root as unknown as DirectoryHandle)
+  assert.deepEqual(loaded.files, project.files)
+  assert.deepEqual(loaded.assets, project.assets)
+  assert.deepEqual(loaded.manifest.dependencies, { three: '0.180.0' })
+  const portable = validateProject(JSON.parse(JSON.stringify(loaded)))
+  assert.deepEqual(decodeAsset(portable.assets!['assets/nested/model space.glb']), bytes)
+  const assetDirectory = await root.getDirectoryHandle('assets')
+  assetDirectory.children.set('unmanaged.bin', new MemoryFile(new Uint8Array([1, 2])))
+  delete loaded.assets!['assets/seed.bin']
+  await writeProjectDirectory(root as unknown as DirectoryHandle, loaded)
+  assert.equal(assetDirectory.children.has('seed.bin'), false)
+  assert.equal(assetDirectory.children.has('unmanaged.bin'), true)
+})
+
+test('invalid resource paths, payloads, and unsupported dependencies are rejected', () => {
+  assert.throws(() => validateProject({ ...starterThreeProject, assets: { '../model.glb': { mime: 'model/gltf-binary', base64: '' } } }), /escapes/)
+  assert.throws(() => validateProject({ ...starterThreeProject, assets: { 'model.glb': { mime: 'model/gltf-binary', base64: 'not base64' } } }), /Invalid asset data/)
+  assert.throws(() => validateProject({ ...starterThreeProject, manifest: { ...starterThreeProject.manifest, dependencies: { three: '0.170.0' } } }), /Only the bundled/)
+  assert.throws(() => validateProject({ ...starterThreeProject, assets: { 'project.json': { mime: 'application/json', base64: '' } } }), /Invalid or duplicate/)
+})
+
+test('manifest lists exclude unrelated source and report missing managed resources', async () => {
+  const root = new MemoryDirectory()
+  await writeProjectDirectory(root as unknown as DirectoryHandle, structuredClone(starterThreeProject))
+  root.children.set('unrelated.js', new MemoryFile('not part of this project'))
+  const loaded = await readProjectDirectory(root as unknown as DirectoryHandle)
+  assert.equal(loaded.files['unrelated.js'], undefined)
+  const assets = await root.getDirectoryHandle('assets')
+  assets.children.delete('seed.bin')
+  await assert.rejects(readProjectDirectory(root as unknown as DirectoryHandle), /Project resource not found: assets\/seed\.bin/)
 })

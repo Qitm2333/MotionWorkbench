@@ -4,22 +4,24 @@ import Editor, { loader } from '@monaco-editor/react'
 import './monaco-workers'
 import * as monaco from 'monaco-editor'
 import { ModuleResolutionKind, typescriptDefaults } from 'monaco-editor/languages/features/typescript/register.js'
-import { Activity, AlertCircle, BookOpen, Check, ChevronDown, ChevronRight, Circle, Copy, Download, FileCode2, FilePlus2, Folder, FolderOpen, FolderPlus, Maximize2, Minimize2, Minus, Moon, Pencil, Play, Plus, RotateCcw, Save, SlidersHorizontal, Square, Sun, Trash2, Upload, Waves, X } from 'lucide-react'
+import { Activity, AlertCircle, BookOpen, Box, Check, ChevronDown, ChevronRight, Circle, Copy, Download, FileCode2, FilePlus2, Folder, FolderOpen, FolderPlus, Maximize2, Minimize2, Minus, Moon, Package, Pencil, Play, Plus, RotateCcw, Save, SlidersHorizontal, Square, Sun, Trash2, Upload, Waves, X } from 'lucide-react'
 import './App.css'
 import { createCurveFromPreset, curvePresets, isAllowedProjectFile, isProjectEntry, isProjectSource, readProjectDirectory, sampleCurveValue, starterHtmlProject, starterProject, validateProject, writeProjectDirectory } from './project'
 import type { CurveResource, DirectoryHandle, Project } from './project'
 import { startHtmlPreview, startPreview } from './runtime'
 import type { ParameterDefinition, ParameterValue, PreviewRuntime } from './runtime'
 import { ExamplesDialog } from './ExamplesDialog'
+import { assetMime, encodeAsset, isProjectAsset } from './assets'
+import { starterThreeProject } from './threeProject'
+import { clearDraft, readDraft, saveDraft } from './drafts'
+import type { ProjectDraft } from './drafts'
 
 loader.config({ monaco })
 
 type Status = 'ready' | 'running' | 'paused' | 'error'
 type FileTreeNode = { name: string; path: string; children?: FileTreeNode[] }
-type ProjectDraft = { project: Project; activeFile: string; savedAt: number }
 type CurvePoints = Extract<CurveResource, { type: 'cubic-bezier' }>['points']
 type PreviewDimensions = { width: number; height: number }
-const draftStorageKey = 'motion-workbench-draft-v1'
 const layoutStorageKey = 'motion-workbench-layout-v1'
 const editorFontSizeStorageKey = 'motion-workbench-editor-font-size-v1'
 const defaultEditorFontSize = 13
@@ -46,19 +48,6 @@ function readLayout() {
 
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
-function readDraft(): ProjectDraft | null {
-  try {
-    const value = JSON.parse(localStorage.getItem(draftStorageKey) ?? 'null') as ProjectDraft | null
-    if (!value || !value.project?.manifest || !value.project.files || typeof value.activeFile !== 'string' || !Number.isFinite(value.savedAt)) return null
-    const manifest = value.project.manifest
-    if (manifest.formatVersion !== 1 || !['canvas2d', 'html'].includes(manifest.projectType) || typeof manifest.entry !== 'string' || typeof manifest.name !== 'string') return null
-    if (!Object.keys(value.project.files).length || Object.values(value.project.files).some((contents) => typeof contents !== 'string')) return null
-    return { ...value, project: validateProject(value.project) }
-  } catch {
-    return null
-  }
 }
 
 function buildFileTree(paths: string[]): FileTreeNode[] {
@@ -153,7 +142,8 @@ function App() {
   const [parameterValues, setParameterValues] = useState<Record<string, ParameterValue>>({})
   const [newProjectOpen, setNewProjectOpen] = useState(false)
   const [examplesOpen, setExamplesOpen] = useState(false)
-  const [draftPrompt, setDraftPrompt] = useState<ProjectDraft | null>(() => readDraft())
+  const [draftPrompt, setDraftPrompt] = useState<ProjectDraft | null>(null)
+  const [draftLoaded, setDraftLoaded] = useState(false)
   const [projectLoadId, setProjectLoadId] = useState(0)
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set())
   const [directoryName, setDirectoryName] = useState('Orbit study')
@@ -206,16 +196,20 @@ function App() {
   }, [editorFontSize])
 
   useEffect(() => {
-    if (saved) return
+    let cancelled = false
+    void readDraft().then((draft) => { if (!cancelled) setDraftPrompt(draft) }).catch(() => {}).finally(() => { if (!cancelled) setDraftLoaded(true) })
+    return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    if (saved || !draftLoaded || draftPrompt) return
     const timeout = window.setTimeout(() => {
-      try {
-        localStorage.setItem(draftStorageKey, JSON.stringify({ project, activeFile, savedAt: Date.now() } satisfies ProjectDraft))
-      } catch {
+      void saveDraft({ project, activeFile, savedAt: Date.now() }).catch(() => {
         setMessage('Draft could not be stored in this browser')
-      }
+      })
     }, 400)
     return () => window.clearTimeout(timeout)
-  }, [project, activeFile, saved])
+  }, [project, activeFile, saved, draftLoaded, draftPrompt])
 
   useLayoutEffect(() => {
     projectRef.current = project
@@ -223,6 +217,8 @@ function App() {
 
   const sourceFiles = useMemo(() => Object.keys(project.files).filter(isProjectSource).sort(), [project.files])
   const fileTree = useMemo(() => buildFileTree(sourceFiles), [sourceFiles])
+  const assetFiles = useMemo(() => Object.keys(project.assets ?? {}).sort(), [project.assets])
+  const assetTree = useMemo(() => buildFileTree(assetFiles), [assetFiles])
   const selectedCurve = project.manifest.curves?.find((curve) => curve.id === selectedCurveId)
 
   useEffect(() => {
@@ -265,7 +261,7 @@ function App() {
     setMessage('Compiling project…')
     try {
       const runtime = currentProject.manifest.projectType === 'html'
-        ? startHtmlPreview(iframeRef.current!, currentProject, (nextParameters, values) => {
+        ? await startHtmlPreview(iframeRef.current!, currentProject, (nextParameters, values) => {
           if (requestId !== applyRequestRef.current) return
           setParameters(nextParameters)
           setParameterValues(values)
@@ -273,7 +269,7 @@ function App() {
           if (requestId !== applyRequestRef.current) return
           setStatus('error')
           setMessage(error.message)
-        })
+        }, () => requestId === applyRequestRef.current)
         : await startPreview(canvasRef.current!, currentProject, (error) => {
           if (requestId !== applyRequestRef.current) return
           setStatus('error')
@@ -359,7 +355,7 @@ function App() {
         setDirectoryName(handle.name)
       }
       await writeProjectDirectory(handle, snapshot)
-      localStorage.removeItem(draftStorageKey)
+      await clearDraft()
       setDraftPrompt(null)
       setSaved(true)
       setMessage(`Saved ${handle.name}/project.json`)
@@ -384,12 +380,13 @@ function App() {
   const importDroppedFiles = async (files: File[]) => {
     if (!files.length) return
     const current = projectRef.current
-    const accepted = files.filter((file) => isAllowedProjectFile(file.name, current.manifest.projectType))
+    const accepted = files.filter((file) => isAllowedProjectFile(file.name, current.manifest.projectType) || isProjectAsset(file.name))
     if (!accepted.length) {
-      setMessage(current.manifest.projectType === 'html' ? 'Drop .html or .css files into Explorer' : 'Drop .js, .jsx, .ts, or .tsx files into Explorer')
+      setMessage(current.manifest.projectType === 'html' ? 'Drop source, model, texture, font, or media files into Explorer' : 'Drop .js, .jsx, .ts, or .tsx files into Explorer')
       return
     }
     const nextFiles = { ...current.files }
+    const nextAssets = { ...(current.assets ?? {}) }
     const imported: string[] = []
     const normalizePath = (file: File) => {
       const relative = (file.webkitRelativePath || file.name).replaceAll('\\', '/')
@@ -399,13 +396,22 @@ function App() {
     }
     for (const file of accepted) {
       const originalPath = normalizePath(file)
+      if (isProjectAsset(originalPath) && !isAllowedProjectFile(originalPath, current.manifest.projectType)) {
+        if (originalPath in nextFiles || originalPath in nextAssets) {
+          setMessage(`Resource path already exists: ${originalPath}`)
+          continue
+        }
+        nextAssets[originalPath] = encodeAsset(await file.arrayBuffer(), file.type || assetMime(originalPath))
+        imported.push(originalPath)
+        continue
+      }
       if (!isAllowedProjectFile(originalPath, current.manifest.projectType)) continue
       const dot = originalPath.lastIndexOf('.')
       const stem = dot > originalPath.lastIndexOf('/') ? originalPath.slice(0, dot) : originalPath
       const extension = dot > originalPath.lastIndexOf('/') ? originalPath.slice(dot) : ''
       let targetPath = originalPath
       let suffix = 2
-      while (targetPath in nextFiles) targetPath = `${stem} (${suffix++})${extension}`
+      while (targetPath in nextFiles || targetPath in nextAssets) targetPath = `${stem} (${suffix++})${extension}`
       nextFiles[targetPath] = await file.text()
       imported.push(targetPath)
     }
@@ -414,13 +420,15 @@ function App() {
     const nextProject = {
       ...current,
       files: nextFiles,
+      assets: nextAssets,
       manifest: firstHtml && current.manifest.projectType === 'html'
         ? { ...current.manifest, entry: firstHtml }
         : current.manifest,
     }
     projectRef.current = nextProject
     setProject(nextProject)
-    setActiveFile(firstHtml ?? imported[0])
+    const firstSource = imported.find((path) => path in nextFiles)
+    if (firstHtml ?? firstSource) setActiveFile((firstHtml ?? firstSource)!)
     setWorkspaceMode('code')
     setSelectedCurveId(null)
     setSaved(false)
@@ -721,7 +729,7 @@ function App() {
   }
 
   const discardDraft = () => {
-    localStorage.removeItem(draftStorageKey)
+    void clearDraft().catch(() => setMessage('Draft could not be removed from this browser'))
     setDraftPrompt(null)
   }
 
@@ -834,9 +842,10 @@ function App() {
     directoryRef.current = null
   }
 
-  const createProject = (type: 'canvas2d' | 'html') => {
-    loadProjectCopy(structuredClone(type === 'html' ? starterHtmlProject : starterProject))
-    setMessage(`${type === 'html' ? 'HTML/CSS' : 'Canvas2D'} project created`)
+  const createProject = (type: 'canvas2d' | 'html' | 'three') => {
+    const template = type === 'three' ? starterThreeProject : type === 'html' ? starterHtmlProject : starterProject
+    loadProjectCopy(structuredClone(template))
+    setMessage(`${type === 'three' ? 'Three.js' : type === 'html' ? 'HTML/CSS' : 'Canvas2D'} project created`)
     setNewProjectOpen(false)
   }
 
@@ -886,6 +895,15 @@ function App() {
     </div>
   </div>)
 
+  const renderAssetTree = (nodes: FileTreeNode[], depth = 0): ReactNode => nodes.map((node) => node.children ? <div key={`asset-${node.path}`}>
+    <div className="asset-folder" style={{ paddingLeft: 13 + depth * 13 }}><Folder size={13} /><span>{node.name}</span></div>
+    {renderAssetTree(node.children, depth + 1)}
+  </div> : <button className="asset-row" key={`asset-${node.path}`} style={{ paddingLeft: 17 + depth * 13 }} onClick={() => {
+    const asset = project.assets?.[node.path]
+    if (!asset) return
+    setMessage(`${node.path} · ${asset.mime} · ${Math.round(asset.base64.length * 3 / 4 / 1024).toLocaleString()} KB`)
+  }} title={node.path}><Package size={13} /><span>{node.name}</span></button>)
+
   return (
     <main className="workbench" data-theme={theme}>
       <header className="topbar">
@@ -914,6 +932,7 @@ function App() {
           <button className="tree-root" onClick={() => setMessage(`${directoryName} · ${sourceFiles.length} source files`)}><ChevronDown size={14} /><span>{directoryName.toUpperCase()}</span></button>
           <div className={`file-list ${explorerDragActive ? 'drag-active' : ''}`} onDragEnter={(event) => { event.preventDefault(); setExplorerDragActive(true) }} onDragOver={(event) => event.preventDefault()} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setExplorerDragActive(false) }} onDrop={onExplorerDrop}>
             {renderTree(fileTree)}
+            {assetFiles.length > 0 && <details className="asset-section"><summary><ChevronRight size={12} /><span>ASSETS</span><small>{assetFiles.length}</small></summary><div className="asset-list">{renderAssetTree(assetTree)}</div></details>}
             {explorerDragActive && <div className="drop-overlay"><Upload size={17} /><span>Drop project files to import</span></div>}
           </div>
           <section className="curves-list" aria-label="Project curves">
@@ -1019,7 +1038,7 @@ function App() {
       </div>
 
       <footer className="statusbar"><div><span className={`status-dot ${status}`} />{status === 'running' ? 'Running' : status === 'paused' ? 'Paused' : status === 'error' ? 'Build failed' : 'Idle'}<span className="status-divider" />{activeFile}</div><div><span>{project.manifest.projectType === 'html' ? 'HTML / CSS' : 'Canvas2D'}</span><span className="status-divider" /><span>Project format v1</span></div></footer>
-      {newProjectOpen && <div className="dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setNewProjectOpen(false) }}><section className="new-project-dialog" role="dialog" aria-modal="true" aria-labelledby="new-project-title"><div className="dialog-heading"><div><span className="dialog-eyebrow">START A STUDY</span><h2 id="new-project-title">New project</h2></div><button className="icon-button" onClick={() => setNewProjectOpen(false)} title="Close"><X size={16} /></button></div><div className="project-choices"><button className="project-choice" onClick={() => createProject('canvas2d')}><span className="choice-icon canvas-choice"><Activity size={18} /></span><span><strong>Canvas2D</strong><small>TypeScript scene with a frame loop</small></span><ChevronRight size={16} /></button><button className="project-choice" onClick={() => createProject('html')}><span className="choice-icon html-choice"><FileCode2 size={18} /></span><span><strong>HTML + CSS</strong><small>A page for small visual experiments</small></span><ChevronRight size={16} /></button></div></section></div>}
+      {newProjectOpen && <div className="dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setNewProjectOpen(false) }}><section className="new-project-dialog" role="dialog" aria-modal="true" aria-labelledby="new-project-title"><div className="dialog-heading"><div><span className="dialog-eyebrow">START A STUDY</span><h2 id="new-project-title">New project</h2></div><button className="icon-button" onClick={() => setNewProjectOpen(false)} title="Close"><X size={16} /></button></div><div className="project-choices"><button className="project-choice" onClick={() => createProject('canvas2d')}><span className="choice-icon canvas-choice"><Activity size={18} /></span><span><strong>Canvas2D</strong><small>TypeScript scene with a frame loop</small></span><ChevronRight size={16} /></button><button className="project-choice" onClick={() => createProject('html')}><span className="choice-icon html-choice"><FileCode2 size={18} /></span><span><strong>HTML + CSS</strong><small>A page for small visual experiments</small></span><ChevronRight size={16} /></button><button className="project-choice" onClick={() => createProject('three')}><span className="choice-icon three-choice"><Box size={18} /></span><span><strong>Three.js</strong><small>WebGL scene with a local glTF model</small></span><ChevronRight size={16} /></button></div></section></div>}
       {pendingCurveDelete && <div className="dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setPendingCurveDelete(null) }}><section className="new-project-dialog curve-delete-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-curve-title"><div className="dialog-heading"><div><span className="dialog-eyebrow">CURVE RESOURCE</span><h2 id="delete-curve-title">Delete {project.manifest.curves?.find((curve) => curve.id === pendingCurveDelete)?.name}</h2></div><button className="icon-button" onClick={() => setPendingCurveDelete(null)} title="Close"><X size={16} /></button></div>{curveReferences(pendingCurveDelete).length ? <><p>This curve is sampled in <code>{curveReferences(pendingCurveDelete).join(', ')}</code>. Choose a replacement before deleting it.</p><label>REPLACE WITH<select value={curveReplacementId} onChange={(event) => setCurveReplacementId(event.target.value)}>{(project.manifest.curves ?? []).filter((curve) => curve.id !== pendingCurveDelete).map((curve) => <option key={curve.id} value={curve.id}>{curve.name} · {curve.id}</option>)}</select></label></> : <p>This curve has no literal <code>curves.sample(...)</code> references in project source.</p>}<div className="draft-actions"><button className="tool-button" onClick={() => setPendingCurveDelete(null)}>Cancel</button><button className="tool-button danger-action" disabled={curveReferences(pendingCurveDelete).length > 0 && !curveReplacementId} onClick={() => void confirmRemoveCurve()}><Trash2 size={13} />Delete curve</button></div></section></div>}
       {draftPrompt && <div className="dialog-backdrop"><section className="new-project-dialog draft-dialog" role="dialog" aria-modal="true" aria-labelledby="draft-title"><div className="dialog-heading"><div><span className="dialog-eyebrow">UNSAVED WORK</span><h2 id="draft-title">Recover this draft?</h2></div></div><p>{draftPrompt.project.manifest.name} · {new Date(draftPrompt.savedAt).toLocaleString()}</p><div className="draft-actions"><button className="tool-button" onClick={discardDraft}>Discard</button><button className="tool-button primary-action" onClick={recoverDraft}>Recover draft</button></div></section></div>}
       {examplesOpen && <ExamplesDialog hasUnsavedChanges={!saved} onClose={() => setExamplesOpen(false)} onOpen={openExample} />}

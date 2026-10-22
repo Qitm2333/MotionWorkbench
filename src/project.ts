@@ -1,3 +1,6 @@
+import { assetMime, decodeAsset, encodeAsset, isProjectAsset } from './assets.ts'
+import type { ProjectAsset } from './assets.ts'
+
 export type ProjectManifest = {
   formatVersion: 1
   name: string
@@ -5,6 +8,8 @@ export type ProjectManifest = {
   projectType: 'canvas2d' | 'html'
   renderer: { type: 'canvas2d'; width: number; height: number; background: string } | { type: 'html' }
   sourceFiles?: string[]
+  assetFiles?: string[]
+  dependencies?: { three: '0.180.0' }
   parameterValues?: Record<string, number | boolean | string>
   curves?: CurveResource[]
 }
@@ -88,6 +93,7 @@ export function sampleCurveValue(curve: CurveResource, progress: number) {
 export type Project = {
   manifest: ProjectManifest
   files: Record<string, string>
+  assets?: Record<string, ProjectAsset>
 }
 
 export type DirectoryHandle = FileSystemDirectoryHandle & {
@@ -292,25 +298,49 @@ export function validateProject(value: unknown): Project {
     files[path] = contents
   }
   if (!(entry in files)) throw new Error(`Entry file not found: ${entry}`)
+  for (const field of ['sourceFiles', 'assetFiles'] as const) {
+    const paths = manifest[field]
+    if (paths === undefined) continue
+    if (!Array.isArray(paths) || paths.some((path) => typeof path !== 'string')) throw new Error(`project.json ${field} must list project paths`)
+    const normalized = paths.map((path) => normalizeProjectPath(path))
+    if (new Set(normalized).size !== normalized.length || normalized.some((path) => path === 'project.json' || !(field === 'sourceFiles' ? isAllowedProjectFile(path, manifest.projectType as ProjectManifest['projectType']) : isProjectAsset(path)))) throw new Error(`project.json has invalid ${field}`)
+  }
 
   if (manifest.parameterValues !== undefined) {
     if (!isRecord(manifest.parameterValues) || Object.entries(manifest.parameterValues).some(([id, item]) => !/^[A-Za-z][\w-]{0,63}$/.test(id) || !['string', 'number', 'boolean'].includes(typeof item) || (typeof item === 'number' && !Number.isFinite(item)))) throw new Error('project.json has invalid parameter overrides')
   }
   const curveIds = new Set<string>()
+  if (manifest.dependencies !== undefined && (!isRecord(manifest.dependencies) || Object.keys(manifest.dependencies).some((key) => key !== 'three') || manifest.dependencies.three !== '0.180.0')) throw new Error('Only the bundled three@0.180.0 dependency is supported')
+  if (manifest.dependencies && manifest.projectType !== 'html') throw new Error('Bundled dependencies require an HTML project')
+  const assets: Record<string, ProjectAsset> = {}
+  if (value.assets !== undefined) {
+    if (!isRecord(value.assets)) throw new Error('Project assets must be a path map')
+    for (const [rawPath, asset] of Object.entries(value.assets)) {
+      const path = normalizeProjectPath(rawPath)
+      if (path === 'project.json' || path in files || path in assets || !isProjectAsset(path)) throw new Error(`Invalid or duplicate asset path: ${path}`)
+      if (!isRecord(asset) || typeof asset.mime !== 'string' || !/^[\w.+-]+\/[\w.+-]+$/.test(asset.mime) || typeof asset.base64 !== 'string' || asset.base64.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(asset.base64)) throw new Error(`Invalid asset data: ${path}`)
+      assets[path] = { mime: asset.mime, base64: asset.base64 }
+    }
+  }
   const curves = manifest.curves === undefined ? undefined : Array.isArray(manifest.curves) ? manifest.curves.map((curve) => validateCurve(curve, curveIds)) : (() => { throw new Error('project.json curves must be an array') })()
   return {
     manifest: { ...manifest, entry, ...(curves ? { curves } : {}) } as ProjectManifest,
     files,
+    ...(Object.keys(assets).length ? { assets } : {}),
   }
 }
 
 export async function readProjectDirectory(handle: DirectoryHandle): Promise<Project> {
   const files: Record<string, string> = {}
+  const assets: Record<string, ProjectAsset> = {}
+  let sourceList: Set<string> | undefined
+  let assetList: Set<string> | undefined
   const walk = async (directory: FileSystemDirectoryHandle, parent = '') => {
     for await (const [name, entry] of directory.entries()) {
       const path = parent ? `${parent}/${name}` : name
       if ((entry as FileSystemDirectoryHandle).kind === 'directory' && !['.git', 'node_modules', 'dist'].includes(name)) await walk(entry as FileSystemDirectoryHandle, path)
-      else if (/\.(?:[cm]?[jt]sx?|html?|css)$/i.test(name)) files[path] = await (await (entry as FileSystemFileHandle).getFile()).text()
+      else if (entry.kind === 'file' && /\.(?:[cm]?[jt]sx?|html?|css)$/i.test(name) && (!sourceList || sourceList.has(path))) files[path] = await (await (entry as FileSystemFileHandle).getFile()).text()
+      else if (entry.kind === 'file' && path !== 'project.json' && isProjectAsset(path) && (!assetList || assetList.has(path))) assets[path] = encodeAsset(await (await (entry as FileSystemFileHandle).getFile()).arrayBuffer(), assetMime(path))
     }
   }
 
@@ -327,10 +357,24 @@ export async function readProjectDirectory(handle: DirectoryHandle): Promise<Pro
     return validateProject({
       manifest: { formatVersion: 1, name: handle.name || 'Imported web project', entry, projectType: 'html', renderer: { type: 'html' } },
       files,
+      assets,
     })
   }
+  if (isRecord(manifest)) {
+    for (const field of ['sourceFiles', 'assetFiles'] as const) {
+      const paths = manifest[field]
+      if (paths === undefined) continue
+      if (!Array.isArray(paths) || paths.some((path) => typeof path !== 'string')) throw new Error(`project.json ${field} must list project paths`)
+      const listed = new Set(paths.map((path) => normalizeProjectPath(path)))
+      if (field === 'sourceFiles') sourceList = listed
+      else assetList = listed
+    }
+  }
   await walk(handle)
-  return validateProject({ manifest, files })
+  for (const path of [...(sourceList ?? []), ...(assetList ?? [])]) {
+    if (!(path in files) && !(path in assets)) throw new Error(`Project resource not found: ${path}`)
+  }
+  return validateProject({ manifest, files, assets })
 }
 
 export async function writeProjectDirectory(handle: DirectoryHandle, project: Project) {
@@ -340,11 +384,11 @@ export async function writeProjectDirectory(handle: DirectoryHandle, project: Pr
     const previousFile = await handle.getFileHandle('project.json')
     const previousManifest = JSON.parse(await (await previousFile.getFile()).text()) as unknown
     if (isRecord(previousManifest) && Array.isArray(previousManifest.sourceFiles)) {
-      for (const path of previousManifest.sourceFiles) {
+      for (const path of [...previousManifest.sourceFiles, ...(Array.isArray(previousManifest.assetFiles) ? previousManifest.assetFiles : [])]) {
         if (typeof path !== 'string') continue
         try {
           const normalized = normalizeProjectPath(path)
-          if (isAllowedProjectFile(normalized, validated.manifest.projectType)) previouslyManaged.add(normalized)
+          if (isAllowedProjectFile(normalized, validated.manifest.projectType) || isProjectAsset(normalized)) previouslyManaged.add(normalized)
         } catch {
           // Ignore invalid paths in an old manifest; they are never safe to remove.
         }
@@ -353,12 +397,7 @@ export async function writeProjectDirectory(handle: DirectoryHandle, project: Pr
   } catch (error) {
     if (!(error instanceof DOMException && error.name === 'NotFoundError')) throw error
   }
-  const manifestFile = await handle.getFileHandle('project.json', { create: true })
-  const manifestWriter = await manifestFile.createWritable()
-  await manifestWriter.write(`${JSON.stringify({ ...validated.manifest, sourceFiles: Object.keys(validated.files) }, null, 2)}\n`)
-  await manifestWriter.close()
-
-  const currentFiles = new Set(Object.keys(validated.files))
+  const currentFiles = new Set([...Object.keys(validated.files), ...Object.keys(validated.assets ?? {})])
   const removeStaleSources = async (directory: FileSystemDirectoryHandle, parent = ''): Promise<void> => {
     for await (const [name, entry] of directory.entries()) {
       if (['.git', 'node_modules', 'dist'].includes(name)) continue
@@ -370,18 +409,22 @@ export async function writeProjectDirectory(handle: DirectoryHandle, project: Pr
       }
     }
   }
-  await removeStaleSources(handle)
-
-  for (const [path, contents] of Object.entries(validated.files)) {
+  for (const [path, contents] of [...Object.entries(validated.files), ...Object.entries(validated.assets ?? {})]) {
     const segments = path.split('/')
     const filename = segments.pop()!
     let directory = handle
     for (const segment of segments) directory = await directory.getDirectoryHandle(segment, { create: true })
     const file = await directory.getFileHandle(filename, { create: true })
     const writer = await file.createWritable()
-    await writer.write(contents)
+    await writer.write(typeof contents === 'string' ? contents : decodeAsset(contents))
     await writer.close()
   }
+  // Write the manifest after all resources have been written successfully.
+  const manifestFile = await handle.getFileHandle('project.json', { create: true })
+  const manifestWriter = await manifestFile.createWritable()
+  await manifestWriter.write(`${JSON.stringify({ ...validated.manifest, sourceFiles: Object.keys(validated.files), assetFiles: Object.keys(validated.assets ?? {}) }, null, 2)}\n`)
+  await manifestWriter.close()
+  await removeStaleSources(handle)
 }
 
 export function isProjectSource(path: string) {

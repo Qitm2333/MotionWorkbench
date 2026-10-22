@@ -2,9 +2,12 @@ import { build, initialize } from 'esbuild-wasm'
 import wasmUrl from 'esbuild-wasm/esbuild.wasm?url'
 import { normalizeProjectPath, sampleCurveValue } from './project'
 import type { CurveResource, Project } from './project'
+import { initializeCompiler } from './compilerInitialization'
 import { opaqueOriginHistoryCompatibilityScript } from './historyCompatibility'
+import { prepareHtmlProject, previewBootstrap } from './htmlProject'
 
-let initialized: Promise<void> | undefined
+const vendorSources = new Map<string, Promise<string>>()
+const previewOwners = new WeakMap<HTMLIFrameElement, string>()
 
 function normalize(path: string) {
   return normalizeProjectPath(path)
@@ -15,8 +18,7 @@ function candidates(path: string) {
 }
 
 export async function compileProject(project: Project) {
-  initialized ??= initialize({ wasmURL: wasmUrl })
-  await initialized
+  await initializeCompiler(() => initialize({ wasmURL: wasmUrl }))
   const files = project.files
   const result = await build({
     entryPoints: [normalize(project.manifest.entry)],
@@ -31,10 +33,28 @@ export async function compileProject(project: Project) {
       setup(plugin) {
         plugin.onResolve({ filter: /.*/ }, (args) => {
           if (args.kind === 'entry-point') return { path: normalize(args.path), namespace: 'project' }
+          if (args.path === 'three' || args.path.startsWith('three/addons/')) {
+            if (!project.manifest.dependencies?.three) return { errors: [{ text: 'Add dependencies.three: "0.180.0" to project.json or create a Three.js project' }] }
+            const suffix = args.path === 'three' ? 'three.module.js' : `addons/${args.path.slice('three/addons/'.length)}`
+            return { path: new URL(`${import.meta.env.BASE_URL}vendor/three/0.180.0/${suffix}`, location.href).href, namespace: 'vendor' }
+          }
+          if (args.namespace === 'vendor' && args.path.startsWith('.')) return { path: new URL(args.path, args.importer).href, namespace: 'vendor' }
           if (!args.path.startsWith('.')) return { errors: [{ text: `Only project-relative imports are supported: ${args.path}` }] }
-          const base = normalize(`${args.importer.split('/').slice(0, -1).join('/')}/${args.path}`)
+          const importerDirectory = args.importer.split('/').slice(0, -1).join('/')
+          const base = normalize(importerDirectory ? `${importerDirectory}/${args.path}` : args.path)
           const resolved = candidates(base).find((candidate) => candidate in files)
           return resolved ? { path: resolved, namespace: 'project' } : { errors: [{ text: `Cannot resolve ${args.path} from ${args.importer}` }] }
+        })
+        plugin.onLoad({ filter: /.*/, namespace: 'vendor' }, async (args) => {
+          let pending = vendorSources.get(args.path)
+          if (!pending) {
+            pending = fetch(args.path).then(async (response) => {
+              if (!response.ok) throw new Error(`Bundled dependency not found: ${args.path}`)
+              return response.text()
+            }).catch((error) => { vendorSources.delete(args.path); throw error })
+            vendorSources.set(args.path, pending)
+          }
+          return { contents: await pending, loader: 'js' }
         })
         plugin.onLoad({ filter: /.*/, namespace: 'project' }, (args) => {
           const contents = files[args.path]
@@ -275,34 +295,31 @@ function normalizeAssetPath(path: string) {
   return parts.join('/')
 }
 
-export function startHtmlPreview(frame: HTMLIFrameElement, project: Project, onParameters: (parameters: ParameterDefinition[], values: Record<string, ParameterValue>) => void, parameterOverrides: Record<string, ParameterValue> = {}, onError: (error: Error) => void = () => {}): PreviewRuntime {
+export async function startHtmlPreview(frame: HTMLIFrameElement, project: Project, onParameters: (parameters: ParameterDefinition[], values: Record<string, ParameterValue>) => void, parameterOverrides: Record<string, ParameterValue> = {}, onError: (error: Error) => void = () => {}, shouldCommit: () => boolean = () => true): Promise<PreviewRuntime> {
   if (project.manifest.projectType !== 'html') throw new Error('HTML preview requires an HTML/CSS project')
   const entryPath = normalizeAssetPath(project.manifest.entry)
   let html = project.files[entryPath]
   if (html === undefined) throw new Error(`Entry file not found: ${entryPath}`)
-  const entryDirectory = entryPath.split('/').slice(0, -1).join('/')
-  const linkedStyles: string[] = []
-  html = html.replace(/<script\b([^>]*?)\bsrc\s*=\s*(["'])(.*?)\2([^>]*)>\s*<\/script>/gi, (tag, before: string, _quote: string, src: string, after: string) => {
-    if (/^(?:[a-z]+:|\/\/|\/|#|data:)/i.test(src)) return tag
-    const relative = src.split(/[?#]/, 1)[0]
-    const path = normalizeAssetPath(`${entryDirectory}/${relative}`)
-    const script = project.files[path]
-    if (script === undefined) throw new Error(`Script not found: ${src} (resolved to ${path})`)
-    return `<script${before}${after}>${script.replace(/<\/script/gi, '<\\/script')}</script>`
-  })
-  html = html.replace(/<link\b([^>]*?)\bhref\s*=\s*(["'])(.*?)\2([^>]*)>/gi, (tag, before: string, _quote: string, href: string, after: string) => {
-    if (!/\brel\s*=\s*(["'])?stylesheet\1?/i.test(`${before} ${after}`)) return tag
-    if (/^(?:[a-z]+:|\/\/|\/|#)/i.test(href)) return tag
-    const relative = href.split(/[?#]/, 1)[0]
-    const path = normalizeAssetPath(`${entryDirectory}/${relative}`)
-    const css = project.files[path]
-    if (css === undefined) throw new Error(`Stylesheet not found: ${href} (resolved to ${path})`)
-    linkedStyles.push(css.replace(/<\/style/gi, '<\\/style'))
-    return ''
-  })
+  const prepared = await prepareHtmlProject(project, compileProject)
+  html = prepared.html
+  if (!shouldCommit()) throw new Error('Preview build was superseded by a newer version')
   const bridgeScript = `<script>
 ${opaqueOriginHistoryCompatibilityScript};
 (() => {
+  const nativeRaf = requestAnimationFrame.bind(window), nativeCancel = cancelAnimationFrame.bind(window)
+  const clock = performance.now.bind(performance)
+  let isPaused = false, pausedAt = 0, offset = 0, nextId = 0
+  const callbacks = new Map()
+  const schedule = (id, record) => { record.native = nativeRaf(now => { callbacks.delete(id); record.callback(now - offset) }) }
+  window.requestAnimationFrame = callback => { const id = ++nextId, record = { callback }; callbacks.set(id, record); if (!isPaused) schedule(id, record); return id }
+  window.cancelAnimationFrame = id => { const record = callbacks.get(id); if (record) nativeCancel(record.native); callbacks.delete(id) }
+  performance.now = () => (isPaused ? pausedAt : clock()) - offset
+  const pauseFrames = paused => {
+    if (paused === isPaused) return
+    isPaused = paused
+    if (paused) { pausedAt = clock(); for (const record of callbacks.values()) nativeCancel(record.native) }
+    else { offset += clock() - pausedAt; for (const [id, record] of callbacks) schedule(id, record) }
+  }
   addEventListener('error', (event) => parent.postMessage({ type: 'workbench-error', message: event.message || 'Page script failed' }, '*'))
   addEventListener('unhandledrejection', (event) => parent.postMessage({ type: 'workbench-error', message: String(event.reason || 'Unhandled page promise rejection') }, '*'))
   const values = Object.create(null)
@@ -319,8 +336,9 @@ ${opaqueOriginHistoryCompatibilityScript};
     return values
   }
   addEventListener('message', (event) => {
+    if (event.source !== parent) return
     const data = event.data
-    if (data?.type === 'workbench-pause') document.documentElement.classList.toggle('workbench-paused', Boolean(data.paused))
+    if (data?.type === 'workbench-pause') { pauseFrames(Boolean(data.paused)); document.documentElement.classList.toggle('workbench-paused', Boolean(data.paused)) }
     if (data?.type === 'workbench-set-parameter' && data.id in values) {
       values[data.id] = data.value
       setCssValue(data.id, data.value)
@@ -339,20 +357,26 @@ ${opaqueOriginHistoryCompatibilityScript};
 })()
 </script>`
   const pauseStyle = `<style>.workbench-paused *, .workbench-paused *::before, .workbench-paused *::after { animation-play-state: paused !important; }</style>`
-  const styles = `${linkedStyles.map((css) => `<style>${css}</style>`).join('')} ${pauseStyle}`
-  const withBridge = html.replace(/<head\b[^>]*>/i, (head) => `${head}${bridgeScript}`)
-  const srcdoc = /<head\b/i.test(html)
-    ? withBridge.replace('</head>', `${styles}</head>`)
-    : `${styles}${bridgeScript}${html}`
+  const injected = `${bridgeScript}${pauseStyle}`
+  html = /<head\b/i.test(html) ? html.replace(/<head\b[^>]*>/i, (head) => `${head}${injected}`) : `${injected}${html}`
   let paused = false
   let disposed = false
-  const renderDocument = () => { frame.srcdoc = srcdoc }
+  const session = crypto.randomUUID()
+  const renderDocument = () => {
+    previewOwners.set(frame, session)
+    frame.removeAttribute('src')
+    frame.srcdoc = `<script>(${previewBootstrap.toString()})(${JSON.stringify(session)})</script>`
+  }
   const syncPausedState = () => frame.contentWindow?.postMessage({ type: 'workbench-pause', paused }, '*')
   let parameters: ParameterDefinition[] = []
   const parameterValues: Record<string, ParameterValue> = {}
   let initialized = false
   const onMessage = (event: MessageEvent) => {
     if (event.source !== frame.contentWindow) return
+    if (event.data?.type === 'workbench-resource-ready' && event.data.session === session) {
+      frame.contentWindow?.postMessage({ type: 'workbench-resource-init', session, project: prepared, html, entryPath }, '*')
+      return
+    }
     if (event.data?.type === 'workbench-error' && typeof event.data.message === 'string') {
       onError(new Error(event.data.message.slice(0, 1000)))
       return
@@ -388,7 +412,18 @@ ${opaqueOriginHistoryCompatibilityScript};
     pause() { paused = true; syncPausedState() },
     resume() { paused = false; syncPausedState() },
     reset() { if (!disposed) renderDocument() },
-    dispose() { disposed = true; frame.removeEventListener('load', syncState); window.removeEventListener('message', onMessage) },
+    dispose() {
+      disposed = true
+      frame.removeEventListener('load', syncState)
+      window.removeEventListener('message', onMessage)
+      // Navigate away to release the old sandbox, animation loops and WebGL
+      // contexts even when the next project uses the separate Canvas2D view.
+      if (previewOwners.get(frame) === session) {
+        previewOwners.delete(frame)
+        frame.removeAttribute('srcdoc')
+        frame.src = 'about:blank'
+      }
+    },
     getPaused() { return paused },
     get parameters() { return parameters },
     getParameterValues() { return { ...parameterValues } },

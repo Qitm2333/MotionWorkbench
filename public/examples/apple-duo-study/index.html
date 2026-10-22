@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+ <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+ <title>iPhone Duo · 交互学习</title>
+ <link rel="stylesheet" href="study.css">
+ <script src="vendor/apple-modules.js" defer></script>
+ <script src="vendor/lotus.js" defer></script>
+ <script src="study.js" defer></script>
+</head>
+<body>
+ <header><span>iPhone Duo</span><a href="https://www.apple.com.cn/iphone-duo/" target="_blank" rel="noreferrer">查看原作 ↗</a></header>
+ <main>
+  <h1>定睛细看。</h1>
+  <section class="viewer" aria-label="产品功能展示">
+   <div id="scene" aria-label="iPhone Duo 三维模型"></div>
+   <div id="hit-area" aria-label="拖动旋转 iPhone Duo"></div>
+   <div id="loading" role="status"><span>正在载入三维场景</span><progress max="1" value="0"></progress></div>
+   <nav class="controls intro-pending" aria-label="产品姿态"><span class="intro-element" aria-hidden="true"></span><ol id="items"></ol></nav>
+   <button id="close" class="close" aria-label="关闭介绍，拖动自由旋转">×</button>
+   <div class="stepper" aria-hidden="true">
+    <button id="prev" aria-label="上一项"><span class="stepper-icon"><svg viewBox="0 0 36 36" aria-hidden="true"><path d="m11 20c0-.3838.1465-.7676.4395-1.0605l5.5-5.5c.5854-.5859 1.5356-.5859 2.1211 0l5.5 5.5c.5859.5859.5859 1.5352 0 2.1211-.5854.5859-1.5356.5859-2.1211 0l-4.4395-4.4395-4.4395 4.4395c-.5854.5859-1.5356.5859-2.1211 0-.293-.293-.4395-.6768-.4395-1.0605z"/></svg></span></button>
+    <button id="next" aria-label="下一项"><span class="stepper-icon"><svg viewBox="0 0 36 36" aria-hidden="true"><path d="m19.0625 22.5597 5.5-5.5076c.5854-.5854.5825-1.5323-.0039-2.1157-.5869-.5835-1.5366-.5815-2.1211.0039l-4.4375 4.4438-4.4375-4.4438c-.5845-.5854-1.5342-.5874-2.1211-.0039-.2944.2922-.4414.676-.4414 1.0598 0 .3818.1455.7637.4375 1.0559l5.5 5.5076c.2813.2815.6636.4403 1.0625.4403s.7812-.1588 1.0625-.4403z"/></svg></span></button>
+   </div>
+   <p id="rotate-hint" hidden>拖动，换个角度看看。</p>
+  </section>
+  <footer><span>交互学习 · 原始模型与场景</span><a href="EVIDENCE.md">源码拆解笔记 ↗</a></footer>
+ </main>
+</body>
+</html>

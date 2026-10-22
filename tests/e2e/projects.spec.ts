@@ -1,0 +1,166 @@
+import { expect, test } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
+
+const preview = (page: Page) => page.frameLocator('iframe[title="HTML project preview"]')
+
+async function openExample(page: Page, name: string) {
+  await page.getByTitle('Browse examples').click()
+  await page.getByRole('button', { name: new RegExp(name) }).click()
+  await page.getByRole('button', { name: /Open example|Replace unsaved project/ }).click()
+  await expect(page.getByRole('dialog', { name: 'Examples', exact: true })).not.toBeVisible()
+}
+
+// Scroll iframe contents, wait out spring layout motion, then map the virtual
+// viewport into the preview's CSS transform for a real mouse click.
+async function clickInPreview(page: Page, target: Locator) {
+  await target.scrollIntoViewIfNeeded()
+  const inner = await target.evaluate((element) => new Promise<{ x: number; y: number; width: number; height: number; viewport: number }>((resolve) => {
+    let previous = element.getBoundingClientRect(), stable = 0
+    const start = performance.now()
+    function check() {
+      const rect = element.getBoundingClientRect()
+      stable = Math.abs(rect.x - previous.x) + Math.abs(rect.y - previous.y) + Math.abs(rect.width - previous.width) + Math.abs(rect.height - previous.height) < 0.25 ? stable + 1 : 0
+      previous = rect
+      if (stable >= 3 || performance.now() - start > 2000) resolve({ x: rect.x, y: rect.y, width: rect.width, height: rect.height, viewport: innerWidth })
+      else requestAnimationFrame(check)
+    }
+    requestAnimationFrame(check)
+  }))
+  const outer = (await page.locator('iframe').boundingBox())!
+  const scale = outer.width / inner.viewport
+  await page.mouse.click(outer.x + (inner.x + inner.width / 2) * scale, outer.y + (inner.y + inner.height / 2) * scale)
+}
+
+async function draftAssetCount(page: Page) {
+  return page.evaluate(() => new Promise<number>((resolve, reject) => {
+    const open = indexedDB.open('motion-workbench', 1)
+    open.onerror = () => reject(open.error)
+    open.onsuccess = () => {
+      const db = open.result
+      const request = db.transaction('drafts').objectStore('drafts').get('current')
+      request.onsuccess = () => { resolve(Object.keys(request.result?.project.assets ?? {}).length); db.close() }
+      request.onerror = () => { reject(request.error); db.close() }
+    }
+  }))
+}
+
+test('Three.js local model, parameters, pause, reset, reapply and portable round trip', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  await page.goto('./')
+  await page.getByRole('button', { name: 'New', exact: true }).click()
+  await page.getByRole('button', { name: /Three\.js/ }).click()
+  await expect(page.locator('.parameter-count')).toHaveText('7')
+  const frame = preview(page)
+  // Sample after the renderer's next draw, before the drawing buffer is cleared.
+  const pixel = async () => frame.locator('#scene').evaluate((element) => new Promise<number[]>((resolve) => {
+    requestAnimationFrame(() => {
+      const canvas = element as HTMLCanvasElement
+      const gl = canvas.getContext('webgl2')!
+      const bytes = new Uint8Array(4)
+      gl.readPixels(canvas.width / 2, canvas.height / 2, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, bytes)
+      resolve([...bytes])
+    })
+  }))
+  await expect.poll(async () => (await pixel()).slice(0, 3).some((value) => value > 20)).toBe(true)
+  await page.getByRole('button', { name: /Parameters/ }).click()
+  await expect(page.getByRole('spinbutton', { name: 'Rotation speed value', exact: true })).toBeVisible()
+  await page.getByRole('spinbutton', { name: 'Rotation speed value', exact: true }).fill('1.2')
+  await page.getByRole('spinbutton', { name: 'Rotation speed value', exact: true }).press('Tab')
+  await page.getByTitle('Pause', { exact: true }).click()
+  const frozen = await frame.locator('body').evaluate(() => performance.now())
+  await page.waitForTimeout(200)
+  expect(await frame.locator('body').evaluate(() => performance.now())).toBe(frozen)
+  await page.getByTitle('Resume', { exact: true }).click()
+  await expect.poll(() => frame.locator('body').evaluate(() => performance.now())).toBeGreaterThan(frozen)
+  await page.getByTitle('Reset simulation', { exact: true }).click()
+  await expect(frame.locator('#scene')).toBeVisible()
+  for (let index = 0; index < 2; index++) {
+    await page.getByRole('button', { name: 'Apply', exact: true }).click()
+    await expect.poll(async () => (await pixel()).slice(0, 3).some((value) => value > 20)).toBe(true)
+    await expect(frame.locator('canvas')).toHaveCount(1)
+  }
+  const download = page.waitForEvent('download')
+  await page.getByTitle('Export portable project').click()
+  const file = await download
+  await page.locator('input[type="file"]').setInputFiles((await file.path())!)
+  await expect(page.locator('.asset-section summary small')).toHaveText('2')
+  await expect(page.locator('.parameter-count')).toHaveText('7')
+  await expect.poll(async () => (await pixel()).slice(0, 3).some((value) => value > 20)).toBe(true)
+  expect(errors).toEqual([])
+})
+
+test('Apple desktop poses, slider, orbit, mobile scene, sandbox and large draft recovery', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  await page.goto('./')
+  await openExample(page, 'Apple Duo interaction study')
+  const frame = preview(page)
+  await expect(frame.locator('.viewer')).toHaveAttribute('data-ready', 'true')
+  await expect(frame.locator('.viewer')).toHaveAttribute('data-scene', 'L')
+  // Ready means WebGL is loaded; intro controls are intentionally inert until
+  // their entrance animation completes. Wait before sending a real click.
+  await expect(frame.locator('.controls')).toHaveClass(/intro-complete/)
+  await expect(frame.locator('.item.active')).toHaveAttribute('data-index', '0')
+  await clickInPreview(page, frame.locator('.item-open').nth(2))
+  await expect(frame.locator('.item.active')).toHaveAttribute('data-index', '2')
+  await clickInPreview(page, frame.locator('#close'))
+  await clickInPreview(page, frame.locator('.item-open').first())
+  await expect(frame.locator('.item.active')).toHaveAttribute('data-index', '0')
+  await frame.locator('#fold').evaluate((element) => {
+    const slider = element as HTMLInputElement
+    slider.value = '0.9'
+    slider.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  await expect.poll(() => frame.locator('#diagnostics').textContent()).toContain('"target":0.9')
+  await clickInPreview(page, frame.locator('#close'))
+  const area = frame.locator('#hit-area')
+  await expect.poll(async () => JSON.parse((await frame.locator('#diagnostics').textContent())!).activation).toBeLessThan(0.01)
+  const before = JSON.parse((await frame.locator('#diagnostics').textContent())!)
+  await area.scrollIntoViewIfNeeded()
+  const outer = (await page.locator('iframe').boundingBox())!
+  const bounds = await area.evaluate((element) => {
+    const rect = element.getBoundingClientRect()
+    return { x: rect.x, y: rect.y, width: rect.width, height: rect.height, viewport: innerWidth }
+  })
+  const scale = outer.width / bounds.viewport
+  const x = outer.x + (bounds.x + bounds.width * 0.7) * scale
+  const y = outer.y + (bounds.y + bounds.height * 0.5) * scale
+  await page.mouse.move(x, y)
+  await page.mouse.down()
+  await page.mouse.move(x + 90 * scale, y + 25 * scale, { steps: 12 })
+  await page.mouse.up()
+  await expect.poll(async () => {
+    const after = JSON.parse((await frame.locator('#diagnostics').textContent())!)
+    return Math.abs(after.theta - before.theta) + Math.abs(after.phi - before.phi)
+  }).toBeGreaterThan(0.01)
+  expect(await frame.locator('body').evaluate(() => {
+    try { void parent.document.body; return false } catch { return true }
+  })).toBe(true)
+  await expect.poll(() => draftAssetCount(page)).toBe(329)
+  await page.reload()
+  await page.getByRole('button', { name: 'Recover draft', exact: true }).click()
+  await expect(preview(page).locator('.viewer')).toHaveAttribute('data-ready', 'true')
+  await page.getByRole('combobox', { name: 'HTML viewport size' }).selectOption('390x844')
+  await page.getByTitle('Reset simulation', { exact: true }).click()
+  await expect(preview(page).locator('.viewer')).toHaveAttribute('data-ready', 'true')
+  await expect(preview(page).locator('.viewer')).toHaveAttribute('data-scene', 'S')
+  expect(errors).toEqual([])
+})
+
+test('Catalog navigation and Canvas2D/HTML switching still work', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  await page.goto('./')
+  await openExample(page, 'Catalog motion study')
+  await expect(page.locator('.parameter-count')).toHaveText('5')
+  const frame = preview(page)
+  await clickInPreview(page, frame.locator('.node-anchor[data-target="product-design"]'))
+  await expect(frame.locator('#catalogStatus')).toContainText('Digital. 60 works.')
+  await expect(frame.locator('.project-card[data-key="card:archiv"]')).toBeVisible()
+  await openExample(page, 'Orbit study')
+  await expect(page.locator('canvas[aria-label="Canvas2D animation preview"]')).toBeVisible()
+  await openExample(page, 'Motion postcard')
+  await expect(preview(page).locator('.sun')).toBeVisible()
+  expect(errors).toEqual([])
+})
