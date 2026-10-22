@@ -10,6 +10,7 @@ MotionWorkbench is a browser-based workspace for making and exploring small visu
 - Live parameter controls and an editable curve library with linear, easing, overshoot, and spring presets.
 - A resizable editor/preview layout, preview viewport and zoom controls, expanded preview, and dark/light themes.
 - Readable project folders, portable JSON import/export, and local draft recovery.
+- An **Examples** browser with the Catalog motion study and Canvas2D / HTML starters; each opens as an editable copy and runs automatically.
 
 ## Requirements
 
@@ -31,7 +32,7 @@ Open the local URL printed by Vite. The starter Canvas2D project is applied auto
 ## Everyday workflow
 
 1. Create a project or open a folder. The Explorer shows its source tree.
-2. Add files with the Explorer's **+** button, or drag supported files (and folders) into the tree.
+2. Add files with the Explorer's **+** button, or drag supported files into the tree.
 3. Edit files in the code editor. **Ctrl/Cmd+Z** and **Ctrl/Cmd+Shift+Z** undo and redo. **Ctrl/Cmd+S** saves and reapplies the current project to refresh the preview.
 4. Use the Explorer's **Parameters** switch or select a curve to edit it in the main workspace. Changes are applied live where supported.
 5. Use the preview toolbar to choose an HTML viewport, change zoom, pause/resume or reset the preview, or expand it to fill the app window.
@@ -40,6 +41,20 @@ Open the local URL printed by Vite. The starter Canvas2D project is applied auto
 Explorer row actions appear on hover. Rename preserves the file's folder and updates detected project-relative references. A file can only be deleted by double-clicking its delete icon; the entry file cannot be deleted.
 
 The editor's **− / +** controls change the code font size from 10–32 px. The reset button returns it to 13 px. The selection is remembered in this browser.
+
+## Examples and explorations
+
+Open **Examples** beside New / Open / Save to browse past explorations and starter projects. Select a study to see its interactions and available parameters, then open it. All source files appear in Explorer and the preview applies automatically. An unsaved-work notice appears before replacing the workspace.
+
+The **Catalog motion study** includes branching navigation, card expansion, and five motion parameters. It opens at **1440 × 900** with Fit zoom so the tree interaction is visible even in a narrow preview panel. Its original responsive behavior uses a grid at widths of 900 px or below; the view toggle inside the example switches between tree and grid.
+
+Examples load as independent copies. **Save** chooses a new project folder, **Export** includes the complete editable source, and reopening an example starts from its bundled version. The repository keeps readable sources and a manifest under [`public/examples/`](./public/examples/); [`src/examples.ts`](./src/examples.ts) registers the gallery entries. Source files load from the same deployment, including GitHub Pages project paths.
+
+Three.js dependency and asset support is deferred; the Apple motion study will be added once its source and runtime requirements are available.
+
+## Skill backups
+
+[`skills/`](./skills/) preserves user-provided skills separately from the application. The `source-first-web-motion-repro-v2.0` archive is unpacked there with its original instructions, references, extraction script, and agent metadata. It is a Git backup only, with no installation, runtime integration, or deployment in the app build. See [`skills/README.md`](./skills/README.md) for the original archive checksum.
 
 ## Project folder format
 
@@ -96,7 +111,7 @@ Canvas scenes can also sample a named project curve:
 const easedProgress = curves.sample('ease-orbit', progress)
 ```
 
-The curve ID is shown in the Curves list. Available resources are linear, cubic Bézier, or spring curves.
+The curve ID is shown in the curve inspector. Available resources are linear, cubic Bézier, or spring curves.
 
 ### HTML + CSS + JavaScript
 

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Catalog Motion Study</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="topbar">
+        <nav class="nav-links" aria-label="Primary"><button class="text-button" type="button">About</button><button class="text-button" type="button">Contact</button></nav>
+        <div class="wordmark">The<br />Design Office<br />of David McGillivray</div>
+      </header>
+
+      <section class="catalog" aria-label="The catalog, by type of work">
+        <p class="catalog-heading">The catalog, by type of work</p>
+        <div class="catalog-stage" id="catalogStage">
+          <div class="node-world" id="nodeWorld">
+            <svg class="node-links" id="nodeLinks" aria-hidden="true"></svg>
+            <div class="pill-layer" id="pillLayer"></div>
+            <div class="card-layer" id="cardLayer"></div>
+          </div>
+          <div class="grid-view" id="gridView"></div>
+        </div>
+        <p class="sr-only" id="catalogStatus" aria-live="polite"></p>
+        <footer class="catalog-footer"><span>Brand &amp; software design</span><span>Made in New York</span></footer>
+      </section>
+
+      <div class="toolbar" aria-label="Catalog controls">
+        <button class="toolbar-button" id="gridToggle" type="button" aria-label="切换目录视图" title="切换目录视图">▦</button>
+        <button class="toolbar-button" id="soundToggle" type="button" aria-label="静音" title="静音">◌</button>
+      </div>
+    </main>
+    <script defer src="./src/main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,7 @@
+interface:
+  display_name: "读源码复原网页动效"
+  short_description: "读取在线网页压缩代码，追踪状态、布局和动画参数，逐步复原交互"
+  default_prompt: "使用 $source-first-web-motion-repro-v2 分析这个参考网页实际加载的 JS/CSS，先找当前源码证据，再还原指定交互动效。"
+
+policy:
+  allow_implicit_invocation: true

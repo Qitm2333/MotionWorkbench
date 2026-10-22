@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { DragEvent as ReactDragEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import Editor, { loader } from '@monaco-editor/react'
+import './monaco-workers'
 import * as monaco from 'monaco-editor'
 import { ModuleResolutionKind, typescriptDefaults } from 'monaco-editor/languages/features/typescript/register.js'
-import { Activity, AlertCircle, Check, ChevronDown, ChevronRight, Circle, Copy, Download, FileCode2, FilePlus2, Folder, FolderOpen, FolderPlus, Maximize2, Minimize2, Minus, Moon, Pencil, Play, Plus, RotateCcw, Save, SlidersHorizontal, Square, Sun, Trash2, Upload, Waves, X } from 'lucide-react'
+import { Activity, AlertCircle, BookOpen, Check, ChevronDown, ChevronRight, Circle, Copy, Download, FileCode2, FilePlus2, Folder, FolderOpen, FolderPlus, Maximize2, Minimize2, Minus, Moon, Pencil, Play, Plus, RotateCcw, Save, SlidersHorizontal, Square, Sun, Trash2, Upload, Waves, X } from 'lucide-react'
 import './App.css'
 import { createCurveFromPreset, curvePresets, isAllowedProjectFile, isProjectEntry, isProjectSource, readProjectDirectory, sampleCurveValue, starterHtmlProject, starterProject, validateProject, writeProjectDirectory } from './project'
 import type { CurveResource, DirectoryHandle, Project } from './project'
 import { startHtmlPreview, startPreview } from './runtime'
 import type { ParameterDefinition, ParameterValue, PreviewRuntime } from './runtime'
+import { ExamplesDialog } from './ExamplesDialog'
 
 loader.config({ monaco })
 
@@ -150,6 +152,7 @@ function App() {
   const [parameters, setParameters] = useState<ParameterDefinition[]>([])
   const [parameterValues, setParameterValues] = useState<Record<string, ParameterValue>>({})
   const [newProjectOpen, setNewProjectOpen] = useState(false)
+  const [examplesOpen, setExamplesOpen] = useState(false)
   const [draftPrompt, setDraftPrompt] = useState<ProjectDraft | null>(() => readDraft())
   const [projectLoadId, setProjectLoadId] = useState(0)
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set())
@@ -808,15 +811,20 @@ function App() {
     void applyCode()
   }
 
-  const createProject = (type: 'canvas2d' | 'html') => {
+  const loadProjectCopy = (nextProject: Project) => {
+    // Invalidate an in-flight compile before replacing the preview and its state.
+    applyRequestRef.current += 1
     runtimeRef.current?.dispose()
     runtimeRef.current = null
     setParameters([])
     setParameterValues({})
-    const nextProject = type === 'html' ? starterHtmlProject : starterProject
+    projectRef.current = nextProject
     setProject(nextProject)
     setSelectedCurveId(null)
     setWorkspaceMode('code')
+    setCollapsedFolders(new Set())
+    setPendingCurveDelete(null)
+    setDraggingCurveHandle(null)
     setProjectLoadId((id) => id + 1)
     setActiveFile(nextProject.manifest.entry)
     setDirectoryName(nextProject.manifest.name)
@@ -824,8 +832,20 @@ function App() {
     setStatus('ready')
     setPreviewReady(false)
     directoryRef.current = null
+  }
+
+  const createProject = (type: 'canvas2d' | 'html') => {
+    loadProjectCopy(structuredClone(type === 'html' ? starterHtmlProject : starterProject))
     setMessage(`${type === 'html' ? 'HTML/CSS' : 'Canvas2D'} project created`)
     setNewProjectOpen(false)
+  }
+
+  const openExample = (exampleProject: Project, viewport?: string) => {
+    loadProjectCopy(exampleProject)
+    setPreviewZoom('fit')
+    setHtmlViewport(viewport ?? 'responsive')
+    setExamplesOpen(false)
+    setMessage(`Opened example: ${exampleProject.manifest.name}`)
   }
 
   const editorLanguage = useMemo(() => {
@@ -875,6 +895,8 @@ function App() {
             <button className="tool-button" onClick={openProject} title="Open project folder"><FolderOpen size={15} /><span>Open</span></button>
             <button className="tool-button" onClick={() => void saveProject()} title="Save project folder"><Save size={15} /><span>Save</span></button>
           </div>
+          <span className="top-separator" />
+          <button className="tool-button" onClick={() => setExamplesOpen(true)} title="Browse examples"><BookOpen size={15} /><span>Examples</span></button>
         </div>
         <div className="top-actions">
           <button className="icon-button" onClick={() => importInputRef.current?.click()} title="Import portable project"><Upload size={15} /></button>
@@ -1000,6 +1022,7 @@ function App() {
       {newProjectOpen && <div className="dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setNewProjectOpen(false) }}><section className="new-project-dialog" role="dialog" aria-modal="true" aria-labelledby="new-project-title"><div className="dialog-heading"><div><span className="dialog-eyebrow">START A STUDY</span><h2 id="new-project-title">New project</h2></div><button className="icon-button" onClick={() => setNewProjectOpen(false)} title="Close"><X size={16} /></button></div><div className="project-choices"><button className="project-choice" onClick={() => createProject('canvas2d')}><span className="choice-icon canvas-choice"><Activity size={18} /></span><span><strong>Canvas2D</strong><small>TypeScript scene with a frame loop</small></span><ChevronRight size={16} /></button><button className="project-choice" onClick={() => createProject('html')}><span className="choice-icon html-choice"><FileCode2 size={18} /></span><span><strong>HTML + CSS</strong><small>A page for small visual experiments</small></span><ChevronRight size={16} /></button></div></section></div>}
       {pendingCurveDelete && <div className="dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setPendingCurveDelete(null) }}><section className="new-project-dialog curve-delete-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-curve-title"><div className="dialog-heading"><div><span className="dialog-eyebrow">CURVE RESOURCE</span><h2 id="delete-curve-title">Delete {project.manifest.curves?.find((curve) => curve.id === pendingCurveDelete)?.name}</h2></div><button className="icon-button" onClick={() => setPendingCurveDelete(null)} title="Close"><X size={16} /></button></div>{curveReferences(pendingCurveDelete).length ? <><p>This curve is sampled in <code>{curveReferences(pendingCurveDelete).join(', ')}</code>. Choose a replacement before deleting it.</p><label>REPLACE WITH<select value={curveReplacementId} onChange={(event) => setCurveReplacementId(event.target.value)}>{(project.manifest.curves ?? []).filter((curve) => curve.id !== pendingCurveDelete).map((curve) => <option key={curve.id} value={curve.id}>{curve.name} · {curve.id}</option>)}</select></label></> : <p>This curve has no literal <code>curves.sample(...)</code> references in project source.</p>}<div className="draft-actions"><button className="tool-button" onClick={() => setPendingCurveDelete(null)}>Cancel</button><button className="tool-button danger-action" disabled={curveReferences(pendingCurveDelete).length > 0 && !curveReplacementId} onClick={() => void confirmRemoveCurve()}><Trash2 size={13} />Delete curve</button></div></section></div>}
       {draftPrompt && <div className="dialog-backdrop"><section className="new-project-dialog draft-dialog" role="dialog" aria-modal="true" aria-labelledby="draft-title"><div className="dialog-heading"><div><span className="dialog-eyebrow">UNSAVED WORK</span><h2 id="draft-title">Recover this draft?</h2></div></div><p>{draftPrompt.project.manifest.name} · {new Date(draftPrompt.savedAt).toLocaleString()}</p><div className="draft-actions"><button className="tool-button" onClick={discardDraft}>Discard</button><button className="tool-button primary-action" onClick={recoverDraft}>Recover draft</button></div></section></div>}
+      {examplesOpen && <ExamplesDialog hasUnsavedChanges={!saved} onClose={() => setExamplesOpen(false)} onOpen={openExample} />}
     </main>
   )
 }
