@@ -410,6 +410,14 @@ ${opaqueOriginHistoryCompatibilityScript};
       onError(new Error(event.data.message.slice(0, 1000)))
       return
     }
+    if (event.data?.type === 'workbench-parameter-values') {
+      const values = event.data.values
+      if (!values || typeof values !== 'object' || Array.isArray(values)) return
+      if (parameters.some((parameter) => !isParameterValue(parameter, values[parameter.id]))) return
+      Object.assign(parameterValues, values)
+      onParameters(parameters, { ...parameterValues })
+      return
+    }
     if (event.data?.type !== 'workbench-parameters') return
     if (!Array.isArray(event.data.parameters) || event.data.parameters.length > 100 || !event.data.parameters.every(isHtmlParameterDefinition)) return
     const nextParameters = event.data.parameters as ParameterDefinition[]

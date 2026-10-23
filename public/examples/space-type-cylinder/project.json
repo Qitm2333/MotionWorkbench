@@ -1,0 +1,14 @@
+{
+  "formatVersion": 1,
+  "name": "Cylinder",
+  "projectType": "html",
+  "entry": "index.html",
+  "renderer": { "type": "html" },
+  "sourceFiles": ["index.html", "style.css", "src/main.js"],
+  "metadata": {
+    "source": "https://spacetypegenerator.com/",
+    "referenceRoute": "/",
+    "referenceRenderer": "p5.js WEBGL",
+    "licenseNote": "Independent study; upstream source and font are not bundled."
+  }
+}

@@ -1,0 +1,7 @@
+* { box-sizing: border-box; }
+html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #fff; }
+body { color: #161616; font: 11px Consolas, "Courier New", monospace; }
+#cylinder { display: block; width: 100%; height: 100%; }
+.text-control { position: fixed; right: 16px; bottom: 76px; color: #686868; }
+#phrase { position: fixed; right: 16px; bottom: 16px; width: min(360px, 46vw); min-width: 190px; resize: vertical; border: 1px solid #777; border-radius: 2px; padding: 6px; background: rgba(255,255,255,.94); color: #111; font: 12px Consolas, "Courier New", monospace; }
+#phrase:focus { outline: 1px solid #111; outline-offset: 1px; }

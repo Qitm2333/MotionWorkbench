@@ -74,6 +74,21 @@ const existingExamples: Example[] = [
     description: 'A small HTML and CSS experiment with live visual controls.',
     highlights: ['Edit HTML and CSS as separate files.', 'Expose parameters and use their CSS custom properties.'],
   },
+  {
+    id: 'space-type-cylinder',
+    name: 'Space Type Generator / Cylinder',
+    category: 'Typography',
+    renderer: 'Canvas2D / HTML project study',
+    description: 'A source-led reconstruction of the Cylinder route: layered glyph rings, the reference wave/camera controls, and seven source-backed presets.',
+    highlights: [
+      'Adjust the Cylinder, Wave, Type, Form Tweak, Camera, and Color parameters in the Parameters panel.',
+      'Select Simple, Jellyfish, Crown, Complex, Weave, Zebra, or Hoops to apply the observed source values.',
+      'The reference is p5 WEBGL with a custom vector keyboard and IBM Plex Mono; this local study uses Canvas2D projection and a system font.',
+    ],
+    projectDirectory: 'space-type-cylinder',
+    viewport: '1440x900',
+    source: 'spacetypegenerator.com/',
+  },
 ]
 
 const benchoExamples: Example[] = benchoCatalog.map((item) => ({

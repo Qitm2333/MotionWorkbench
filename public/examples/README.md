@@ -16,4 +16,8 @@ Click the Logo / Digital / Physical branches to expand them, hover the cards, an
 2. Add an entry in `src/examples.ts` with a stable ID, description, highlights, and its project directory.
 3. Verify that it runs with the existing Canvas2D or HTML runtime before marking it available.
 
+## Typography
+
+`space-type-cylinder/` is the only Space Type Generator study currently listed. Its evidence ledger records the root route's loaded sketch, controls, presets, and source-to-implementation limits. Other reference routes are intentionally not included.
+
 The gallery also includes the built-in Orbit study and Motion postcard starters. Three.js examples will be added after their source is supplied and dependency/asset support is designed; this gallery does not extend the current runtime.

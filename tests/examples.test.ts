@@ -59,6 +59,29 @@ test('catalog loads complete local source under a Pages deployment prefix', asyn
   assert.equal(requested.length, 4)
 })
 
+test('Cylinder is the sole Space Type study and exposes the source slider model', async (context) => {
+  context.mock.method(globalThis, 'fetch', async (input: string) => {
+    const prefix = '/MotionWorkbench/examples/space-type-cylinder/'
+    assert.ok(input.startsWith(prefix))
+    const relative = input.slice('/MotionWorkbench/'.length)
+    return new Response(await readFile(new URL(`../public/${relative}`, import.meta.url), 'utf8'))
+  })
+  const studies = examples.filter((example) => example.category === 'Typography')
+  assert.deepEqual(studies.map(({ id }) => id), ['space-type-cylinder'])
+  const project = await loadExampleProject('space-type-cylinder', '/MotionWorkbench/')
+  const source = project.files['src/main.js']
+  assert.equal(project.manifest.name, 'Cylinder')
+  assert.match(source, /label: 'Cylinder radius', default: 250, min: 0, max: 1000/)
+  assert.match(source, /label: 'Cylinder count', default: 1, min: 1, max: 30/)
+  assert.match(source, /label: 'Tweak X rotation', default: 0, min: 0, max: 45/)
+  assert.match(source, /label: 'Camera X-rotation', default: 15, min: -180, max: 180/)
+  assert.match(source, /Jellyfish: \{ radius: 200, stackNum: 6/)
+  assert.match(source, /Hoops: \{ radius: 110, stackNum: 7/)
+  assert.match(source, /workbench-parameter-values/)
+  assert.match(project.files['index.html'], /I-TRY-ALL-THINGS;-I-ACHIEVE-WHAT-I-CAN\.\/\//)
+  assert.equal(project.files['index.html'].includes('space-type/'), false)
+})
+
 test('example loading reports missing files and rejects unsafe manifests before fetching source', async (context) => {
   const fetchMock = context.mock.method(globalThis, 'fetch', async () => new Response('', { status: 404 }))
   await assert.rejects(loadExampleProject('catalog-repro', '/'), /project\.json \(404\)/)

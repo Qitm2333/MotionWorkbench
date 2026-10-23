@@ -13,7 +13,7 @@ test('Examples browser filters the catalog and keeps the active result in sync',
 
   await dialog.getByRole('button', { name: 'Bencho Block', exact: true }).click()
   await expect(list.getByRole('button')).toHaveCount(41)
-  await expect(dialog.locator('.examples-results-heading small')).toHaveText('41 / 46')
+  await expect(dialog.locator('.examples-results-heading small')).toHaveText(`41 / ${examples.length}`)
 
   const search = dialog.getByRole('searchbox', { name: 'Search examples' })
   await search.fill('Action node')
@@ -25,6 +25,43 @@ test('Examples browser filters the catalog and keeps the active result in sync',
   await expect(list.getByRole('button')).toHaveCount(0)
   await expect(dialog.getByText('No examples match this search.').first()).toBeVisible()
   await expect(dialog.getByRole('button', { name: /Open example/ })).toBeDisabled()
+})
+
+test('Space Type Cylinder exposes source controls and renders an editable study', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  await page.goto('./')
+  await page.getByTitle('Browse examples').click()
+  const dialog = page.getByRole('dialog', { name: 'Examples', exact: true })
+  await dialog.getByRole('button', { name: 'Typography', exact: true }).click()
+  await expect(dialog.getByRole('navigation', { name: 'Example projects' }).getByRole('button')).toHaveCount(1)
+  await dialog.getByRole('button', { name: /Space Type Generator \/ Cylinder/ }).click()
+  await dialog.getByRole('button', { name: /Open example|Replace unsaved project/ }).click()
+  const frame = preview(page)
+  const canvas = frame.locator('#cylinder')
+  await expect(canvas).toBeVisible()
+  await expect(page.locator('.parameter-count')).toHaveText('25')
+  await expect.poll(() => canvas.evaluate((element) => {
+    const target = element as HTMLCanvasElement
+    if (!target.width || !target.height) return false
+    const pixels = target.getContext('2d')!.getImageData(0, 0, target.width, target.height).data
+    let minX = target.width, maxX = 0, minY = target.height, maxY = 0
+    for (let y = 0; y < target.height; y += 2) for (let x = 0; x < target.width; x += 2) {
+      if (pixels[(y * target.width + x) * 4] < 120) {
+        minX = Math.min(minX, x); maxX = Math.max(maxX, x)
+        minY = Math.min(minY, y); maxY = Math.max(maxY, y)
+      }
+    }
+    return maxX - minX > 250 && maxY - minY > 40
+  })).toBe(true)
+  await page.getByRole('button', { name: /Parameters/ }).click()
+  await page.getByRole('combobox', { name: 'Cylinder preset' }).selectOption('Jellyfish')
+  await expect(page.getByRole('spinbutton', { name: 'Cylinder count value' })).toHaveValue('6')
+  await expect(frame.locator('#cylinder')).toBeVisible()
+  await page.getByRole('checkbox', { name: 'PRIDE! six-color layers' }).check()
+  await expect(page.getByRole('spinbutton', { name: 'Cylinder count value' })).toHaveValue('6')
+  await frame.locator('#phrase').fill('CYLINDER TEST')
+  expect(errors).toEqual([])
 })
 
 test('Examples browser fits a narrow viewport and scrolls its results independently', async ({ page }) => {
