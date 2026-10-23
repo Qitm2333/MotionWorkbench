@@ -137,17 +137,11 @@
     const glyphHeight = Number(params.typeY) + stretchY;
     if (glyphWidth <= 0.1 || glyphHeight <= 0.1 || !Number(params.typeStroke)) return;
 
-    context.font = `${Math.max(1, glyphHeight)}px Consolas, "Courier New", monospace`;
-    context.textAlign = 'center';
-    context.textBaseline = 'middle';
-    const textWidth = Math.max(1, context.measureText(char).width);
     const origin = project(pointFor(row, col, 0, 0, 0, elapsed, textLength, stackHeight));
     const xAxis = project(pointFor(row, col, 1, 0, 0, elapsed, textLength, stackHeight));
     const yAxis = project(pointFor(row, col, 0, 1, 0, elapsed, textLength, stackHeight));
-    const sx = glyphWidth / textWidth;
-    const sy = glyphHeight / Math.max(1, glyphHeight);
-    const a = (xAxis.x - origin.x) * sx, b = (xAxis.y - origin.y) * sx;
-    const c = (yAxis.x - origin.x) * sy, d = (yAxis.y - origin.y) * sy;
+    const a = xAxis.x - origin.x, b = xAxis.y - origin.y;
+    const c = yAxis.x - origin.x, d = yAxis.y - origin.y;
     const normal = rotateY(vector(0, 0, 1), col * Math.PI * 2 / textLength + row * Number(params.rOffset) + frame * Number(params.rRotate) / 1000);
     const facing = Math.max(0.12, Math.min(1, 0.22 + Math.abs(normal.z) * 0.78));
     const color = params.pride ? palette[row % palette.length] : params.typeColor;
@@ -159,8 +153,9 @@
       context.globalAlpha = alpha;
       context.lineWidth = Number(params.typeStroke);
       context.lineJoin = 'round';
+      context.lineCap = 'round';
       context.strokeStyle = ink;
-      context.strokeText(char, 0, 0);
+      window.drawSourceGlyph(context, char, glyphWidth, glyphHeight);
       context.restore();
     }
   }
@@ -190,7 +185,8 @@
     canvas.height = Math.round(height * ratio);
   }
 
-  phrase.addEventListener('input', () => render(0));
+  let currentElapsed = 0;
+  phrase.addEventListener('input', () => render(currentElapsed));
   window.addEventListener('resize', resize);
   document.addEventListener('workbench:params', (event) => {
     const values = event.detail || {};
@@ -198,7 +194,7 @@
     Object.assign(params, values);
     if (!parameterSyncReady) {
       previousValues = { ...params };
-      render(0);
+      render(currentElapsed);
       return;
     }
     const presetChanged = changed.includes('preset') && values.preset !== activePreset;
@@ -215,14 +211,15 @@
       publishParameters();
     } else if (values.preset === 'Custom') activePreset = 'Custom';
     previousValues = { ...params };
-    render(0);
+    render(currentElapsed);
   });
 
   resize();
   let lastDraw = 0;
   function frame(now) {
     if (now - lastDraw >= 1000 / 30) {
-      render(now / 1000);
+      currentElapsed = now / 1000;
+      render(currentElapsed);
       lastDraw = now;
     }
     requestAnimationFrame(frame);

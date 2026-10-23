@@ -4,11 +4,12 @@
   "projectType": "html",
   "entry": "index.html",
   "renderer": { "type": "html" },
-  "sourceFiles": ["index.html", "style.css", "src/main.js"],
+  "sourceFiles": ["index.html", "style.css", "src/glyph-adapter.js", "src/keyboardEngine_190103.js", "src/main.js"],
+  "assetFiles": ["assets/IBMPlexMono-Regular.otf", "assets/OFL.md"],
   "metadata": {
     "source": "https://spacetypegenerator.com/",
     "referenceRoute": "/",
     "referenceRenderer": "p5.js WEBGL",
-    "licenseNote": "Independent study; upstream source and font are not bundled."
+    "licenseNote": "The IBM Plex Mono font is redistributed under the SIL Open Font License 1.1; see assets/OFL.md. The upstream custom vector glyph source is not bundled."
   }
 }

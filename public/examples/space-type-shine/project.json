@@ -1,0 +1,38 @@
+{
+  "formatVersion": 1,
+  "name": "Shine",
+  "projectType": "html",
+  "entry": "index.html",
+  "renderer": {
+    "type": "html"
+  },
+  "sourceFiles": [
+    "index.html",
+    "sketch_shine.js",
+    "shine_script/update.js",
+    "shine_script/textures.js",
+    "shine_script/animators.js",
+    "shine_script/recording.js",
+    "shine_script/class_spoke.js",
+    "style_shine.css",
+    "workbench-parameters.js"
+  ],
+  "assetFiles": [
+    "shine_resources/Milligram-Heavy.ttf",
+    "shine_resources/Inter-Medium.ttf",
+    "shine_resources/NeueWorld-CondensedRegular.ttf",
+    "shine_resources/EditorialNew-Regular.ttf",
+    "shine_resources/Heading-Now-56-Bold-Italic.otf",
+    "shine_resources/ZafranArabic-Black.otf",
+    "shine_resources/Ko_Banzeen-SlantedL.otf",
+    "shine_resources/transparency.png",
+    "EVIDENCE.md",
+    "CC-BY-NC-SA-4.0.md"
+  ],
+  "metadata": {
+    "source": "https://spacetypegenerator.com/shine",
+    "referenceRoute": "/shine",
+    "referenceRenderer": "upstream p5.js sketch",
+    "licenseNote": "Upstream source retains CC BY-NC-SA 4.0 notice; see evidence and license."
+  }
+}

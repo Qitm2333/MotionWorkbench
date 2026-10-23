@@ -1,0 +1,31 @@
+{
+  "formatVersion": 1,
+  "name": "Danger",
+  "projectType": "html",
+  "entry": "index.html",
+  "renderer": {
+    "type": "html"
+  },
+  "sourceFiles": [
+    "index.html",
+    "sketch_danger.js",
+    "style2.css",
+    "workbench-parameters.js"
+  ],
+  "assetFiles": [
+    "assets/IBMPlexMono-Regular.otf",
+    "assets/KeplerStd-Medium.otf",
+    "assets/WorkSans-Regular.ttf",
+    "assets/RobotoCondensed-Bold.ttf",
+    "assets/AguafinaScript-Regular.ttf",
+    "assets/Roboto-Thin.ttf",
+    "EVIDENCE.md",
+    "CC-BY-NC-SA-4.0.md"
+  ],
+  "metadata": {
+    "source": "https://spacetypegenerator.com/danger",
+    "referenceRoute": "/danger",
+    "referenceRenderer": "upstream p5.js sketch",
+    "licenseNote": "Upstream source retains CC BY-NC-SA 4.0 notice; see evidence and license."
+  }
+}

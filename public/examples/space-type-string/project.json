@@ -1,0 +1,36 @@
+{
+  "formatVersion": 1,
+  "name": "String",
+  "projectType": "html",
+  "entry": "index.html",
+  "renderer": {
+    "type": "html"
+  },
+  "sourceFiles": [
+    "index.html",
+    "sketch_string.js",
+    "particle.js",
+    "textures.js",
+    "style2.css",
+    "workbench-parameters.js"
+  ],
+  "assetFiles": [
+    "resources/IBMPlexMono-Regular.otf",
+    "resources/nimbus-sans-l_regular-condensed.ttf",
+    "resources/ProximaNova-Black.otf",
+    "resources/KeplerStd-Medium.otf",
+    "resources/Plaid-XL.otf",
+    "resources/IBMPlexMono-Italic.otf",
+    "resources/DoHyeon-Regular.ttf",
+    "resources/NotoSansJP-Black.otf",
+    "resources/NotoSansSC-Thin.otf",
+    "EVIDENCE.md",
+    "CC-BY-NC-SA-4.0.md"
+  ],
+  "metadata": {
+    "source": "https://spacetypegenerator.com/string",
+    "referenceRoute": "/string",
+    "referenceRenderer": "upstream p5.js sketch",
+    "licenseNote": "Upstream source retains CC BY-NC-SA 4.0 notice; see evidence and license."
+  }
+}

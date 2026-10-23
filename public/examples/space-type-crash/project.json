@@ -1,0 +1,48 @@
+{
+  "formatVersion": 1,
+  "name": "Crash",
+  "projectType": "html",
+  "entry": "index.html",
+  "renderer": {
+    "type": "html"
+  },
+  "sourceFiles": [
+    "index.html",
+    "sketch_crash.js",
+    "crash_script/animators.js",
+    "crash_script/class_0boundary.js",
+    "crash_script/class_0circle.js",
+    "crash_script/class_1all.js",
+    "crash_script/class_2line.js",
+    "crash_script/class_3letter.js",
+    "crash_script/class_3debris.js",
+    "crash_script/class_3word.js",
+    "crash_script/update.js",
+    "crash_script/recording.js",
+    "style_crash.css",
+    "style_crash_mobile.css",
+    "workbench-parameters.js"
+  ],
+  "assetFiles": [
+    "crash_resources/Extenda-30-Deca.otf",
+    "crash_resources/Inter-Medium.ttf",
+    "crash_resources/Gilway-Bold.otf",
+    "crash_resources/EditorialNew-Thin.otf",
+    "crash_resources/Evans-Narrow-Heavy.otf",
+    "crash_resources/images/3.gif",
+    "crash_resources/images/0.gif",
+    "crash_resources/images/1.gif",
+    "crash_resources/images/2.gif",
+    "crash_resources/images/4.gif",
+    "crash_resources/images/5.gif",
+    "crash_resources/images/6.gif",
+    "EVIDENCE.md",
+    "CC-BY-NC-SA-4.0.md"
+  ],
+  "metadata": {
+    "source": "https://spacetypegenerator.com/crash",
+    "referenceRoute": "/crash",
+    "referenceRenderer": "upstream p5.js sketch",
+    "licenseNote": "Upstream source retains CC BY-NC-SA 4.0 notice; see evidence and license."
+  }
+}

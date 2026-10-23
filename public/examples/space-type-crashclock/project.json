@@ -1,0 +1,39 @@
+{
+  "formatVersion": 1,
+  "name": "Crash Clock",
+  "projectType": "html",
+  "entry": "index.html",
+  "renderer": {
+    "type": "html"
+  },
+  "sourceFiles": [
+    "index.html",
+    "crashClock_script/animators.js",
+    "crashClock_script/class_0boundary.js",
+    "crashClock_script/class_0hand.js",
+    "crashClock_script/class_0particle.js",
+    "crashClock_script/class_0partPac.js",
+    "crashClock_script/class_1all.js",
+    "crashClock_script/class_2line.js",
+    "crashClock_script/class_3letter.js",
+    "sketch_crashClock.js",
+    "crashClock_script/update.js",
+    "style_crashClock.css",
+    "workbench-parameters.js"
+  ],
+  "assetFiles": [
+    "crashClock_resources/Milligram-Heavy.otf",
+    "crashClock_resources/Inter-Medium.ttf",
+    "crashClock_resources/Gilway-Bold.otf",
+    "crashClock_resources/EditorialNew-Thin.otf",
+    "crashClock_resources/Evans-Narrow-Heavy.otf",
+    "EVIDENCE.md",
+    "CC-BY-NC-SA-4.0.md"
+  ],
+  "metadata": {
+    "source": "https://spacetypegenerator.com/crashclock",
+    "referenceRoute": "/crashclock",
+    "referenceRenderer": "upstream p5.js sketch",
+    "licenseNote": "Upstream source retains CC BY-NC-SA 4.0 notice; see evidence and license."
+  }
+}

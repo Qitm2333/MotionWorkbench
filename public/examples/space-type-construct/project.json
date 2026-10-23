@@ -1,0 +1,35 @@
+{
+  "formatVersion": 1,
+  "name": "Construct",
+  "projectType": "html",
+  "entry": "index.html",
+  "renderer": {
+    "type": "html"
+  },
+  "sourceFiles": [
+    "index.html",
+    "construct/sketch.js",
+    "construct/update.js",
+    "construct/textures.js",
+    "construct/italicWave.js",
+    "construct/entry.js",
+    "construct/g_cloud.js",
+    "construct/g_scribble.js",
+    "construct/g_zigzag.js",
+    "construct/g_gradient.js",
+    "construct/g_box.js",
+    "construct/style.css",
+    "workbench-parameters.js"
+  ],
+  "assetFiles": [
+    "construct/resources/Linotype - Neue Haas Grotesk Text Std 55 Roman.ttf",
+    "EVIDENCE.md",
+    "CC-BY-NC-SA-4.0.md"
+  ],
+  "metadata": {
+    "source": "https://spacetypegenerator.com/construct",
+    "referenceRoute": "/construct",
+    "referenceRenderer": "upstream p5.js sketch",
+    "licenseNote": "Upstream source retains CC BY-NC-SA 4.0 notice; see evidence and license."
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "formatVersion": 1,
+  "name": "Pow",
+  "projectType": "html",
+  "entry": "index.html",
+  "renderer": {
+    "type": "html"
+  },
+  "sourceFiles": [
+    "index.html",
+    "sketch_pow.js",
+    "pow_script/update.js",
+    "pow_script/recording.js",
+    "pow_script/class_0mousePop.js",
+    "pow_script/class_1all.js",
+    "pow_script/class_2line.js",
+    "pow_script/class_3letter.js",
+    "pow_script/class_4spur.js",
+    "pow_script/animators.js",
+    "style_pow.css",
+    "workbench-parameters.js"
+  ],
+  "assetFiles": [
+    "resources/FormulaCondensed-Bold.otf",
+    "resources/EditorialNew-Thin.otf",
+    "resources/NeueWorld-CondensedRegular.otf",
+    "resources/TT Bluescreens Trial Medium.otf",
+    "resources/TT Travels Trial Black Italic.otf",
+    "resources/Oktah Neue SemiBold.otf",
+    "resources/NotoSansKR-Black.otf",
+    "EVIDENCE.md",
+    "CC-BY-NC-SA-4.0.md"
+  ],
+  "metadata": {
+    "source": "https://spacetypegenerator.com/pow",
+    "referenceRoute": "/pow",
+    "referenceRenderer": "upstream p5.js sketch",
+    "licenseNote": "Upstream source retains CC BY-NC-SA 4.0 notice; see evidence and license."
+  }
+}

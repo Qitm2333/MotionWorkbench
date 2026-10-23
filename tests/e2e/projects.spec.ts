@@ -34,7 +34,7 @@ test('Space Type Cylinder exposes source controls and renders an editable study'
   await page.getByTitle('Browse examples').click()
   const dialog = page.getByRole('dialog', { name: 'Examples', exact: true })
   await dialog.getByRole('button', { name: 'Typography', exact: true }).click()
-  await expect(dialog.getByRole('navigation', { name: 'Example projects' }).getByRole('button')).toHaveCount(1)
+  await expect(dialog.getByRole('navigation', { name: 'Example projects' }).getByRole('button')).toHaveCount(2)
   await dialog.getByRole('button', { name: /Space Type Generator \/ Cylinder/ }).click()
   await dialog.getByRole('button', { name: /Open example|Replace unsaved project/ }).click()
   const frame = preview(page)
@@ -54,13 +54,61 @@ test('Space Type Cylinder exposes source controls and renders an editable study'
     }
     return maxX - minX > 250 && maxY - minY > 40
   })).toBe(true)
+  const iframe = page.locator('iframe[title="Project preview"]')
+  await iframe.evaluate((element) => {
+    element.setAttribute('data-load-count', '0')
+    element.addEventListener('load', () => element.setAttribute('data-load-count', String(Number(element.getAttribute('data-load-count')) + 1)))
+  })
   await page.getByRole('button', { name: /Parameters/ }).click()
   await page.getByRole('combobox', { name: 'Cylinder preset' }).selectOption('Jellyfish')
   await expect(page.getByRole('spinbutton', { name: 'Cylinder count value' })).toHaveValue('6')
   await expect(frame.locator('#cylinder')).toBeVisible()
+  await expect(iframe).toHaveAttribute('data-load-count', '0')
   await page.getByRole('checkbox', { name: 'PRIDE! six-color layers' }).check()
   await expect(page.getByRole('spinbutton', { name: 'Cylinder count value' })).toHaveValue('6')
   await frame.locator('#phrase').fill('CYLINDER TEST')
+  expect(errors).toEqual([])
+})
+
+test('Space Type Field maps its grid, wave phases, palette and presets to Workbench parameters', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  await page.goto('./')
+  await page.getByTitle('Browse examples').click()
+  const dialog = page.getByRole('dialog', { name: 'Examples', exact: true })
+  await dialog.getByRole('button', { name: 'Typography', exact: true }).click()
+  await expect(dialog.getByRole('navigation', { name: 'Example projects' }).getByRole('button')).toHaveCount(2)
+  await dialog.getByRole('button', { name: /Space Type Generator \/ Field/ }).click()
+  await dialog.getByRole('button', { name: /Open example|Replace unsaved project/ }).click()
+  const frame = preview(page)
+  const canvas = frame.locator('#field')
+  await expect(canvas).toBeVisible()
+  await expect.poll(() => canvas.evaluate(async () => {
+    await document.fonts.ready
+    return document.fonts.check('24px "IBM Plex Mono"')
+  })).toBe(true)
+  await expect(page.locator('.parameter-count')).toHaveText('40')
+  await page.getByRole('button', { name: /Parameters/ }).click()
+  await expect(page.getByRole('checkbox', { name: 'Fill the full grid with text' })).not.toBeChecked()
+  await expect.poll(() => canvas.evaluate((element) => {
+    const target = element as HTMLCanvasElement
+    if (!target.width || !target.height) return false
+    const pixels = target.getContext('2d')!.getImageData(0, 0, target.width, target.height).data
+    let marks = 0
+    for (let i = 0; i < pixels.length; i += 32) if (pixels[i] < 120) marks++
+    return marks > 100
+  })).toBe(true)
+  await page.getByRole('combobox', { name: 'Field preset' }).selectOption('Stacks')
+  await expect(page.getByRole('spinbutton', { name: 'Columns value' })).toHaveValue('22')
+  await expect(page.getByRole('spinbutton', { name: 'Rows value' })).toHaveValue('8')
+  await expect(page.getByRole('checkbox', { name: 'Fill the full grid with text' })).toBeChecked()
+  await page.getByRole('combobox', { name: 'Field preset' }).selectOption('Complex Z')
+  await expect(page.getByRole('spinbutton', { name: 'Z-axis amplitude value' })).toHaveValue('41')
+  await expect(page.getByRole('checkbox', { name: 'Y-wave phase shift' })).toBeChecked()
+  await page.getByRole('checkbox', { name: 'Use layer 3' }).check()
+  await expect(page.getByRole('checkbox', { name: 'Use layer 2' })).toBeChecked()
+  await expect(page.getByRole('combobox', { name: 'Field preset' })).toHaveValue('Custom')
+  await frame.locator('#phrase').fill('FIELD TEST')
   expect(errors).toEqual([])
 })
 

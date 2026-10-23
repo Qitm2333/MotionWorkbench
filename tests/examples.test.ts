@@ -59,15 +59,19 @@ test('catalog loads complete local source under a Pages deployment prefix', asyn
   assert.equal(requested.length, 4)
 })
 
-test('Cylinder is the sole Space Type study and exposes the source slider model', async (context) => {
+test('Space Type studies expose the licensed source routes', async (context) => {
   context.mock.method(globalThis, 'fetch', async (input: string) => {
-    const prefix = '/MotionWorkbench/examples/space-type-cylinder/'
+    const prefix = '/MotionWorkbench/examples/space-type-'
     assert.ok(input.startsWith(prefix))
     const relative = input.slice('/MotionWorkbench/'.length)
-    return new Response(await readFile(new URL(`../public/${relative}`, import.meta.url), 'utf8'))
+    return new Response(await readFile(new URL(`../public/${relative}`, import.meta.url)))
   })
   const studies = examples.filter((example) => example.category === 'Typography')
-  assert.deepEqual(studies.map(({ id }) => id), ['space-type-cylinder'])
+  assert.equal(studies.length, 20)
+  assert.deepEqual(studies.slice(0, 2).map(({ id }) => id), ['space-type-cylinder', 'space-type-field'])
+  assert.equal(studies.some(({ id }) => id === 'space-type-clutter'), false)
+  assert.equal(studies.some(({ id }) => id === 'space-type-boost'), false)
+  assert.equal(studies.some(({ id }) => id === 'space-type-boxsquad'), false)
   const project = await loadExampleProject('space-type-cylinder', '/MotionWorkbench/')
   const source = project.files['src/main.js']
   assert.equal(project.manifest.name, 'Cylinder')
@@ -80,6 +84,27 @@ test('Cylinder is the sole Space Type study and exposes the source slider model'
   assert.match(source, /workbench-parameter-values/)
   assert.match(project.files['index.html'], /I-TRY-ALL-THINGS;-I-ACHIEVE-WHAT-I-CAN\.\/\//)
   assert.equal(project.files['index.html'].includes('space-type/'), false)
+  assert.equal(project.manifest.assetFiles?.includes('assets/IBMPlexMono-Regular.otf'), true)
+  assert.equal(project.assets?.['assets/IBMPlexMono-Regular.otf']?.mime, 'font/otf')
+  assert.match(project.files['style.css'], /IBMPlexMono-Regular\.otf/)
+  assert.match(source, /drawSourceGlyph/)
+  assert.match(project.files['src/keyboardEngine_190103.js'], /function keyboardEngine/)
+
+  const field = await loadExampleProject('space-type-field', '/MotionWorkbench/')
+  const fieldSource = field.files['src/main.js']
+  assert.equal(field.manifest.name, 'Field')
+  assert.match(fieldSource, /label: 'Columns', default: 21, min: 1, max: 200/)
+  assert.match(fieldSource, /label: 'Fill the full grid with text', default: false/)
+  assert.match(fieldSource, /label: 'Field preset'/)
+  assert.match(fieldSource, /'Complex Z': \{ column: 38, row: 10/)
+  assert.match(fieldSource, /workbench-parameter-values/)
+  assert.match(field.files['index.html'], /WORDS MOVE THROUGH OPEN SPACE/)
+  assert.equal(field.manifest.assetFiles?.includes('assets/IBMPlexMono-Regular.otf'), true)
+  assert.equal(field.assets?.['assets/IBMPlexMono-Regular.otf']?.mime, 'font/otf')
+  assert.match(field.files['style.css'], /IBMPlexMono-Regular\.otf/)
+  assert.match(field.files['src/main.js'], /drawSourceGlyph/)
+  assert.match(field.files['src/keyboardEngine_190103.js'], /function keyboardEngine/)
+  assert.match(field.files['src/glyph-adapter.js'], /drawSourceGlyph/)
 })
 
 test('example loading reports missing files and rejects unsafe manifests before fetching source', async (context) => {

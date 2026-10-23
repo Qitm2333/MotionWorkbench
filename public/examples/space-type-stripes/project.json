@@ -1,0 +1,29 @@
+{
+  "formatVersion": 1,
+  "name": "Stripes",
+  "projectType": "html",
+  "entry": "index.html",
+  "renderer": {
+    "type": "html"
+  },
+  "sourceFiles": [
+    "index.html",
+    "CCapture.all.min.js",
+    "js/gif.worker.js",
+    "sketch_stripes.js",
+    "keyboardEngine_190221.js",
+    "style.css",
+    "workbench-parameters.js"
+  ],
+  "assetFiles": [
+    "assets/IBMPlexMono-Regular.otf",
+    "EVIDENCE.md",
+    "CC-BY-NC-SA-4.0.md"
+  ],
+  "metadata": {
+    "source": "https://spacetypegenerator.com/stripes",
+    "referenceRoute": "/stripes",
+    "referenceRenderer": "upstream p5.js sketch",
+    "licenseNote": "Upstream source retains CC BY-NC-SA 4.0 notice; see evidence and license."
+  }
+}

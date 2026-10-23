@@ -1,0 +1,52 @@
+{
+  "formatVersion": 1,
+  "name": "Badge",
+  "projectType": "html",
+  "entry": "index.html",
+  "renderer": {
+    "type": "html"
+  },
+  "sourceFiles": [
+    "index.html",
+    "sketch_badge.js",
+    "update.js",
+    "textures_badge.js",
+    "units.js",
+    "style_badge.css",
+    "workbench-parameters.js"
+  ],
+  "assetFiles": [
+    "assets/ProximaNova-Thin.otf",
+    "assets/Vollkorn-BoldItalic.ttf",
+    "assets/KeplerStd-Medium.otf",
+    "assets/WorkSans-Regular.ttf",
+    "assets/NotoSansJP-Thin.otf",
+    "assets/Plaid-XL.otf",
+    "assets/Origin-Super-Condensed-Regular.otf",
+    "assets/IBMPlexMono-ExtraLightItalic.otf",
+    "assets/Roboto-BlackItalic.ttf",
+    "assets/Linotype - NHaasGroteskDSStd-95Blk.otf",
+    "assets/Cairo-Bold.ttf",
+    "images/0cosmic.gif",
+    "images/1cruise.gif",
+    "images/3earth.gif",
+    "images/4moon.gif",
+    "images/5thumbsup.gif",
+    "images/6flowers.gif",
+    "images/7stars.gif",
+    "images/8texture.gif",
+    "images/9storm.gif",
+    "images/10eva.gif",
+    "images/11robotech.gif",
+    "images/12macross.gif",
+    "images/13waves.gif",
+    "EVIDENCE.md",
+    "CC-BY-NC-SA-4.0.md"
+  ],
+  "metadata": {
+    "source": "https://spacetypegenerator.com/badge",
+    "referenceRoute": "/badge",
+    "referenceRenderer": "upstream p5.js sketch",
+    "licenseNote": "Upstream source retains CC BY-NC-SA 4.0 notice; see evidence and license."
+  }
+}

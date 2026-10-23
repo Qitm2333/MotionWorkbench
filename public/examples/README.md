@@ -18,6 +18,8 @@ Click the Logo / Digital / Physical branches to expand them, hover the cards, an
 
 ## Typography
 
-`space-type-cylinder/` is the only Space Type Generator study currently listed. Its evidence ledger records the root route's loaded sketch, controls, presets, and source-to-implementation limits. Other reference routes are intentionally not included.
+The Typography category contains the source-audited Space Type Generator routes whose loaded source includes an explicit CC BY-NC-SA 4.0 notice. Each project includes an evidence ledger, its route-specific renderer and assets, and a Workbench parameter bridge derived from the source controls. `tools/import-space-type.mjs` can regenerate the route snapshots from the live site.
+
+Clutter, Boost, and BoxSquad are not bundled because their currently loaded source does not include a redistribution license notice. They require an independent implementation or explicit permission before entering the repository.
 
 The gallery also includes the built-in Orbit study and Motion postcard starters. Three.js examples will be added after their source is supplied and dependency/asset support is designed; this gallery does not extend the current runtime.

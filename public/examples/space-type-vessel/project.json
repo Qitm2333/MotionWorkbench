@@ -1,0 +1,37 @@
+{
+  "formatVersion": 1,
+  "name": "Vessel",
+  "projectType": "html",
+  "entry": "index.html",
+  "renderer": {
+    "type": "html"
+  },
+  "sourceFiles": [
+    "index.html",
+    "sketch_vessel.js",
+    "vessel_script/update.js",
+    "vessel_script/animators.js",
+    "vessel_script/recording.js",
+    "vessel_script/0_classBase.js",
+    "vessel_script/1_classLine.js",
+    "style_vessel.css",
+    "workbench-parameters.js"
+  ],
+  "assetFiles": [
+    "vessel_resources/Milligram-Regular.ttf",
+    "vessel_resources/ObjectSans-Heavy.ttf",
+    "vessel_resources/EditorialNew-Thin.ttf",
+    "vessel_resources/NeueWorld-SemiCondensedLight.ttf",
+    "vessel_resources/Unigeo32-Light.ttf",
+    "vessel_resources/Dialogue-A-Light.ttf",
+    "vessel_resources/transparency.png",
+    "EVIDENCE.md",
+    "CC-BY-NC-SA-4.0.md"
+  ],
+  "metadata": {
+    "source": "https://spacetypegenerator.com/vessel",
+    "referenceRoute": "/vessel",
+    "referenceRenderer": "upstream p5.js sketch",
+    "licenseNote": "Upstream source retains CC BY-NC-SA 4.0 notice; see evidence and license."
+  }
+}

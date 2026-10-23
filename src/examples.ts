@@ -83,11 +83,26 @@ const existingExamples: Example[] = [
     highlights: [
       'Adjust the Cylinder, Wave, Type, Form Tweak, Camera, and Color parameters in the Parameters panel.',
       'Select Simple, Jellyfish, Crown, Complex, Weave, Zebra, or Hoops to apply the observed source values.',
-      'The reference is p5 WEBGL with a custom vector keyboard and IBM Plex Mono; this local study uses Canvas2D projection and a system font.',
+      'The reference is p5 WEBGL with a custom vector keyboard and IBM Plex Mono; this local study uses Canvas2D projection with the byte-identical IBM Plex Mono asset.',
     ],
     projectDirectory: 'space-type-cylinder',
     viewport: '1440x900',
     source: 'spacetypegenerator.com/',
+  },
+  {
+    id: 'space-type-field',
+    name: 'Space Type Generator / Field',
+    category: 'Typography',
+    renderer: 'Canvas2D / HTML project study',
+    description: 'A source-led reconstruction of the Field route: a text-filled spatial grid with per-cell wave, type, palette, and camera controls.',
+    highlights: [
+      'Choose Full Text or a single pass through the input phrase, then shape its grid with the source parameters.',
+      'Select Stacks, Bricks, Simple Z, Complex Z, Zebra, or Harlequin to apply the observed source values.',
+      'The reference is p5 WEBGL with custom vector glyphs; this local study uses Canvas2D projection and IBM Plex Mono for its locally rendered glyphs.',
+    ],
+    projectDirectory: 'space-type-field',
+    viewport: '1440x900',
+    source: 'spacetypegenerator.com/field',
   },
 ]
 
@@ -104,7 +119,32 @@ const benchoExamples: Example[] = benchoCatalog.map((item) => ({
   license: 'MIT',
 }))
 
-export const examples: Example[] = [...existingExamples, ...benchoExamples]
+const spaceTypeRoutes = [
+  ['stripes', 'Stripes'], ['coil', 'Coil'], ['flag', 'Flag'], ['morisawa', 'Morisawa'],
+  ['cascade', 'Cascade'], ['ribbon', 'Ribbon'], ['layers', 'Layers'], ['danger', 'Danger'],
+  ['string', 'String'], ['badge', 'Badge'], ['construct', 'Construct'], ['snap', 'Snap'],
+  ['flash', 'Flash'], ['pow', 'Pow'], ['crash', 'Crash'], ['crashclock', 'Crash Clock'],
+  ['vessel', 'Vessel'], ['shine', 'Shine'],
+] as const
+
+const importedSpaceTypeExamples: Example[] = spaceTypeRoutes.map(([route, name]) => ({
+  id: `space-type-${route}`,
+  name: `Space Type Generator / ${name}`,
+  category: 'Typography',
+  renderer: 'Original p5.js study',
+  description: `The source-backed ${name} route running as an editable Workbench HTML project.`,
+  highlights: [
+    'Keeps the route-specific source renderer, motion model, controls, and loaded assets.',
+    'Mirrors the source-created controls into the Workbench Parameters view.',
+    'Retains upstream attribution and the CC BY-NC-SA 4.0 source license notice.',
+  ],
+  projectDirectory: `space-type-${route}`,
+  viewport: '1440x900',
+  source: `spacetypegenerator.com/${route}`,
+  license: 'CC BY-NC-SA 4.0',
+}))
+
+export const examples: Example[] = [...existingExamples, ...importedSpaceTypeExamples, ...benchoExamples]
 
 /** Load a fresh editable copy. baseUrl includes the Vite/Pages deployment prefix. */
 export async function loadExampleProject(id: string, baseUrl: string, signal?: AbortSignal): Promise<Project> {

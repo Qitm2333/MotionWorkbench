@@ -1,0 +1,29 @@
+{
+  "formatVersion": 1,
+  "name": "Flag",
+  "projectType": "html",
+  "entry": "index.html",
+  "renderer": {
+    "type": "html"
+  },
+  "sourceFiles": [
+    "index.html",
+    "CCapture.all.min.js",
+    "js/gif.worker.js",
+    "sketch_flag.js",
+    "keyboardEngine_190402_corners.js",
+    "style.css",
+    "workbench-parameters.js"
+  ],
+  "assetFiles": [
+    "assets/IBMPlexMono-Regular.otf",
+    "EVIDENCE.md",
+    "CC-BY-NC-SA-4.0.md"
+  ],
+  "metadata": {
+    "source": "https://spacetypegenerator.com/flag",
+    "referenceRoute": "/flag",
+    "referenceRenderer": "upstream p5.js sketch",
+    "licenseNote": "Upstream source retains CC BY-NC-SA 4.0 notice; see evidence and license."
+  }
+}
