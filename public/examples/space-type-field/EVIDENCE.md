@@ -4,7 +4,7 @@
 - Retrieved: 2026-10-23
 - Live browser check: Chrome, 1440 x 900 and 390 x 844. The route is `/field`; the full-window canvas resizes to the viewport. The shared navigation marks FIELD as the active route.
 - Loaded assets: `https://spacetypegenerator.com/sketch_field.js`, `https://spacetypegenerator.com/keyboardEngine_190103.js`, `https://spacetypegenerator.com/style.css`, p5.js 1.0.0 from cdnjs, IBM Plex Mono from Google Fonts, and `assets/IBMPlexMono-Regular.otf`.
-- The loaded JS declares CC BY-NC-SA 4.0. No upstream source, text, vector artwork, or glyph engine is bundled. The IBM Plex Mono OTF is included under its separate SIL Open Font License 1.1 in `assets/OFL.md`.
+- The loaded JS declares CC BY-NC-SA 4.0. The source vector keyboard engine is bundled with its header and license. The IBM Plex Mono OTF is included under its separate SIL Open Font License 1.1 in `assets/OFL.md`.
 
 ## Behavior ledger
 
@@ -18,8 +18,8 @@
 | Cell rotations derive from neighboring Z-wave samples; Y-wave also drives per-cell Z rotation and X stretch. | confirmed | Neighbor samples and transform chain in `draw()`. |
 | Presets first call `reSetting()`, then assign source slider values; all set Full Text on. `reSetting()` clears X-stretch phase and Full Text but leaves Z/X/Y and Y-stretch phase checkboxes untouched. | confirmed | `reSetting()` and all six preset functions; repeated browser clicks confirm these phase toggles persist. |
 | Palette checkboxes are cumulative: enabling palette N enables earlier colors; disabling N reverts the active count to N-1. Colors cycle by row. PRIDE sets six-color mode and assigns a sixth purple color in code. | confirmed | Palette callbacks, `setTextColor()`, and `pride()`. The sixth color has no color picker in the source UI. |
-| Reference source phrase, exact vector glyph contours, and glyph engine are omitted. | deliberate omission | The project uses original neutral sample text and Canvas2D `strokeText` glyphs. |
-| IBM Plex Mono is loaded by the reference and used as its p5 text font. | confirmed | `preload()` calls `loadFont('assets/IBMPlexMono-Regular.otf')`; `setup()` calls `textFont(font)`. The local project bundles this publicly served font under OFL 1.1 and applies it to its Canvas2D glyphs. |
+| Main glyphs are vector paths, independent of the OTF used for UI text. | confirmed | `src/keyboardEngine_190103.js` executes through `src/glyph-adapter.js`, supplying the source paths and trigonometry. |
+| IBM Plex Mono is loaded by the reference for p5 UI text. | confirmed | `preload()` calls `loadFont('assets/IBMPlexMono-Regular.otf')`; `setup()` calls `textFont(font)`. The local copy retains OFL 1.1. |
 
 ## Source parameter map
 
@@ -60,8 +60,8 @@ Unlisted values return to `reSetting()` defaults. Source phase checkbox state an
 
 ## Implementation boundary
 
-- Workbench implementation uses Canvas2D screen-space projection to keep an editable HTML project; reference uses p5 WEBGL and custom vector glyph contours. IBM Plex Mono now matches the loaded font asset, but projection, glyph contours, and antialiasing still differ.
+- Workbench uses Canvas2D projection and the source vector keyboard paths; reference uses p5 WEBGL. Projection, surface rendering, and antialiasing still differ.
 - The reference text is not copied; an original neutral sample of similar length is provided. Workbench Full Text defaults off to match the actual initial `draw()` branch rather than the source checkbox's inconsistent checked appearance. All source range controls, phase toggles, five editable source palette colors, background, Full Text mode, PRIDE behavior, and source presets are exposed through Workbench Parameters.
 - The source hides some state in preset callbacks rather than sliders; those retained phase and palette states are kept separate from numeric parameter values.
-- The source font's OFL 1.1 license is retained beside the bundled OTF; the reference's CC BY-NC-SA JavaScript, text, and vector glyphs are not redistributed.
+- The source glyph engine retains its CC BY-NC-SA 4.0 notice and bundled license. The OTF retains OFL 1.1. Text is now editable in Parameters; the preview input is hidden. Updates retain the current animation time, and batched restore does not replay palette checkbox actions.
 - Tested source viewport: 1440 x 900 and 390 x 844. The narrow page retains the same fixed UI positions and its preset controls extend beyond the viewport; the drawing canvas itself resizes to 390 x 844.

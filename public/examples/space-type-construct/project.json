@@ -24,7 +24,21 @@
   "assetFiles": [
     "construct/resources/Linotype - Neue Haas Grotesk Text Std 55 Roman.ttf",
     "EVIDENCE.md",
-    "CC-BY-NC-SA-4.0.md"
+    "CC-BY-NC-SA-4.0.md",
+    "construct/resources/Windward_14m.otf",
+    "construct/resources/ApocLC-Regular-Desktop.otf",
+    "construct/resources/gifs/6i.gif",
+    "construct/resources/gifs/6.gif",
+    "construct/resources/gifs/0.gif",
+    "construct/resources/gifs/1.gif",
+    "construct/resources/gifs/2.gif",
+    "construct/resources/gifs/3.gif",
+    "construct/resources/gifs/4.gif",
+    "construct/resources/gifs/5.gif",
+    "construct/resources/gifs/7.gif",
+    "construct/resources/gifs/8.gif",
+    "construct/resources/gifs/9.gif",
+    "construct/resources/gifs/10.gif"
   ],
   "metadata": {
     "source": "https://spacetypegenerator.com/construct",

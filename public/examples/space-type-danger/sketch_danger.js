@@ -166,6 +166,7 @@ function draw() {
     print("done?");
   }
 
+  if (!document.documentElement.classList.contains('workbench-source-controls-hidden')) {
   push();
   translate(-width/2,-height/2);
 
@@ -187,6 +188,7 @@ function draw() {
   stroke(foreCol);
   line(width/2 - 200, height - 90, width/2 + 200, height - 90);
   pop();
+  }
 }
 
 function savePNG(){

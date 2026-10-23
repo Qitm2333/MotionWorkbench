@@ -114,6 +114,7 @@ export const starterProject: Project = {
   | { type: 'number'; label: string; default: number; min: number; max: number; step?: number; group?: string }
   | { type: 'boolean'; label: string; default: boolean; group?: string }
   | { type: 'color'; label: string; default: string; group?: string }
+  | { type: 'text'; label: string; default: string; multiline?: boolean; maxLength?: number; group?: string }
   | { type: 'select'; label: string; default: string; options: Array<{ label: string; value: string }>; group?: string }
 
 interface WorkbenchParameterApi {

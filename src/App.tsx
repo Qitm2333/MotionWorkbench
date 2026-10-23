@@ -239,6 +239,13 @@ function App() {
 
   useEffect(() => {
     const projectKey = project.manifest.name
+    // Only the open project's models participate in language services. Keeping
+    // every visited example alive retains per-model listeners and source text.
+    for (const [key, models] of projectModelsRef.current) {
+      if (key === projectKey) continue
+      for (const uri of models) monaco.editor.getModel(monaco.Uri.parse(uri))?.dispose()
+      projectModelsRef.current.delete(key)
+    }
     const currentModels = new Set<string>()
     for (const [path, contents] of Object.entries(project.files)) {
       const uri = projectModelUri(projectKey, path)
@@ -275,6 +282,7 @@ function App() {
           if (requestId !== applyRequestRef.current) return
           setParameters(nextParameters)
           setParameterValues(values)
+          setProject((current) => ({ ...current, manifest: { ...current.manifest, parameterValues: values } }))
         }, currentProject.manifest.parameterValues, (error) => {
           if (requestId !== applyRequestRef.current) return
           setStatus('error')
@@ -967,11 +975,14 @@ function App() {
           {workspaceMode === 'parameters' ? <section className="parameter-editor">
             <div className="panel-tabs"><div className="active-tab"><SlidersHorizontal size={13} />Parameters</div><div className="editor-actions"><button className="icon-button" onClick={resetParameters} disabled={!parameters.length} title="Restore parameter defaults"><RotateCcw size={13} /></button></div></div>
             <div className="parameter-editor-content">
-              {parameters.length ? <div className="parameter-grid">{parameters.map((parameter) => <label className="parameter-card" key={parameter.id}>
+              {parameters.length ? <div className="parameter-grid">{parameters.map((parameter) => <label className="parameter-card" key={parameter.id} data-parameter-id={parameter.id}>
                 <span className="parameter-label">{parameter.label}<small>{parameter.group ?? parameter.id}</small></span>
                 {parameter.type === 'number' && <div className="parameter-number"><input type="range" min={parameter.min} max={parameter.max} step={parameter.step ?? 'any'} value={Number(parameterValues[parameter.id] ?? parameter.default)} onChange={(event) => updateParameter(parameter.id, Number(event.target.value))} aria-label={parameter.label} /><input type="number" min={parameter.min} max={parameter.max} step={parameter.step ?? 'any'} value={Number(parameterValues[parameter.id] ?? parameter.default)} onChange={(event) => updateParameter(parameter.id, Number(event.target.value))} aria-label={`${parameter.label} value`} /></div>}
                 {parameter.type === 'boolean' && <input className="parameter-checkbox" type="checkbox" checked={Boolean(parameterValues[parameter.id] ?? parameter.default)} onChange={(event) => updateParameter(parameter.id, event.target.checked)} />}
                 {parameter.type === 'color' && <input className="parameter-color" type="color" value={String(parameterValues[parameter.id] ?? parameter.default)} onChange={(event) => updateParameter(parameter.id, event.target.value)} aria-label={parameter.label} />}
+                {parameter.type === 'text' && (parameter.multiline
+                  ? <textarea className="parameter-text parameter-textarea" value={String(parameterValues[parameter.id] ?? parameter.default)} maxLength={parameter.maxLength} rows={3} onChange={(event) => updateParameter(parameter.id, event.target.value)} aria-label={parameter.label} />
+                  : <input className="parameter-text" type="text" value={String(parameterValues[parameter.id] ?? parameter.default)} maxLength={parameter.maxLength} onChange={(event) => updateParameter(parameter.id, event.target.value)} aria-label={parameter.label} />)}
                 {parameter.type === 'select' && <select value={String(parameterValues[parameter.id] ?? parameter.default)} onChange={(event) => updateParameter(parameter.id, event.target.value)} aria-label={parameter.label}>{parameter.options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>}
               </label>)}</div> : <div className="parameter-empty-state">No parameters declared in this project.</div>}
             </div>

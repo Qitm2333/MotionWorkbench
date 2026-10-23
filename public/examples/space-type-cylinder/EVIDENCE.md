@@ -4,7 +4,7 @@
 - Retrieved: 2026-10-23
 - Live browser check: Chrome, 1440 x 900, current root route; 23 navigation links are present, with `/` selected as CYLINDER.
 - Loaded source: `https://spacetypegenerator.com/sketch.js`, `https://spacetypegenerator.com/keyboardEngine_190103.js`, `https://spacetypegenerator.com/style.css`, p5.js 1.0.0 from cdnjs, and `assets/IBMPlexMono-Regular.otf`.
-- License notice in both JavaScript files: CC BY-NC-SA 4.0. The source code and font are not copied into this study.
+- License notice in both JavaScript files: CC BY-NC-SA 4.0. The source vector keyboard engine is bundled with its header and license; IBM Plex Mono retains its separate OFL notice.
 
 ## Evidence ledger
 
@@ -21,7 +21,7 @@
 | `PRIDE!` sets stack count to 6, switches `inpNumber` to 6, and selects six layer colors. It is an action, not a reversible source toggle. | confirmed | Live DOM interaction and `sketch.js` `pride()`. A reversible Workbench boolean is a deliberate usability adaptation. |
 | Presets call `reSetting()` then assign the values below. `reSetting()` resets sliders and `stackHeightAdjust`, but does not reset `inpNumber`. | confirmed | Live DOM slider values after clicking each preset and `sketch.js` preset functions. |
 | The reference glyph engine is a custom vector keyboard engine; it is not ordinary font text. | confirmed | Loaded `keyboardEngine_190103.js` dispatches characters to individual path functions. |
-| Reproducing the exact custom vector glyph contours without bundling the referenced source code. | unknown / omitted | The study uses the byte-identical IBM Plex Mono OTF for its independent Canvas2D text approximation; the source's path engine remains intentionally separate. |
+| Glyph contours come from the source vector keyboard. | confirmed | `src/keyboardEngine_190103.js` executes through `src/glyph-adapter.js`; the adapter supplies the source drawing and trigonometric calls, including `atan` and `tan`. |
 
 ## Reference parameter map
 
@@ -69,7 +69,8 @@ Unlisted values remain at the `reSetting()` defaults shown above.
 
 - This study implements the confirmed cylinder/layer/wave/camera dataflow with Canvas2D projection so it runs inside Workbench's existing HTML project sandbox. The reference uses p5 WEBGL; projection and antialiasing will therefore differ.
 - The reference advances its motion phase from the ongoing p5 `frameCount` while drawing at 30fps. Local parameter and phrase updates reuse the latest elapsed animation time rather than resetting phase to zero, so edits do not cause a phase jump.
-- The reference draws its own vector glyphs from `keyboardEngine_190103.js` and loads IBM Plex Mono. This project bundles the byte-identical publicly served IBM Plex Mono OTF under its SIL Open Font License 1.1 and uses it for the Canvas2D glyph approximation; the upstream vector glyph source is not copied.
+- The reference draws its main glyphs from `keyboardEngine_190103.js`; Workbench uses those same path functions through its Canvas2D adapter. The OTF used by the source for UI labels is retained under OFL but does not determine the main glyph contours.
 - The original visible preset buttons are represented as a Parameters-panel select. Preset changes are synchronized back to the Workbench parameter model so the displayed controls match the active values.
-- The text remains an editable textarea in the preview because Workbench HTML parameters currently support number, boolean, color, and select values, but not free-form text.
+- Text is a multiline Parameters input, initialized to the source phrase. The preview textarea is hidden. Preset updates run immediately, including while paused; batched restoration preserves text and derived preset values. No iframe reload is needed for edits.
+- `stackHeightAdjust`, set internally by Weave/Zebra/Hoops, is exposed as Layer height adjustment and saved explicitly, including after a user edits a preset into Custom.
 - Browser comparison target: 1440 x 900. The live reference was also inspected at 390 x 844; it keeps the fixed-position controls and full-window canvas and does not switch to a separate mobile layout.

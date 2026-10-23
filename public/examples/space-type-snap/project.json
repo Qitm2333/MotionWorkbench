@@ -19,7 +19,13 @@
   ],
   "assetFiles": [
     "EVIDENCE.md",
-    "CC-BY-NC-SA-4.0.md"
+    "CC-BY-NC-SA-4.0.md",
+    "snap_resources/Inter-Medium.ttf",
+    "snap_resources/Inter-Black.ttf",
+    "snap_resources/ApocLC-Regular-Desktop.otf",
+    "snap_resources/IBMPlexMono-BoldItalic.ttf",
+    "snap_resources/SpaceMono-Regular.ttf",
+    "snap_resources/SpaceGrotesk-Bold.ttf"
   ],
   "metadata": {
     "source": "https://spacetypegenerator.com/snap",

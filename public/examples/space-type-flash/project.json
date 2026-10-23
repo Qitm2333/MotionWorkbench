@@ -36,7 +36,14 @@
   ],
   "assetFiles": [
     "EVIDENCE.md",
-    "CC-BY-NC-SA-4.0.md"
+    "CC-BY-NC-SA-4.0.md",
+    "resources/TT Bluescreens Trial Medium.otf",
+    "resources/TT Travels Next Trial Bold.ttf",
+    "resources/Inter-Medium.ttf",
+    "resources/Agrandir-TightBlack.otf",
+    "resources/ApocLC-Regular-Desktop.otf",
+    "resources/BaseNeueTrial-CondensedBlack.otf",
+    "resources/Cairo-Black.ttf"
   ],
   "metadata": {
     "source": "https://spacetypegenerator.com/flash",

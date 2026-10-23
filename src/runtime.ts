@@ -118,6 +118,7 @@ export type ParameterDefinition = {
   | { type: 'number'; default: number; min: number; max: number; step?: number }
   | { type: 'boolean'; default: boolean }
   | { type: 'color'; default: string }
+  | { type: 'text'; default: string; multiline?: boolean; maxLength?: number }
   | { type: 'select'; default: string; options: Array<{ label: string; value: string }> }
 )
 
@@ -136,6 +137,11 @@ function isHtmlParameterDefinition(value: unknown): value is ParameterDefinition
   }
   if (parameter.type === 'boolean') return typeof parameter.default === 'boolean'
   if (parameter.type === 'color') return typeof parameter.default === 'string' && /^#[\da-f]{6}$/i.test(parameter.default)
+  if (parameter.type === 'text') {
+    return typeof parameter.default === 'string' && parameter.default.length <= 10000
+      && (parameter.multiline === undefined || typeof parameter.multiline === 'boolean')
+      && (parameter.maxLength === undefined || (Number.isInteger(parameter.maxLength) && Number(parameter.maxLength) > 0 && Number(parameter.maxLength) <= 10000 && parameter.default.length <= Number(parameter.maxLength)))
+  }
   if (parameter.type === 'select') {
     return typeof parameter.default === 'string' && Array.isArray(parameter.options)
       && parameter.options.length > 0
@@ -149,6 +155,7 @@ function isParameterValue(parameter: ParameterDefinition, value: unknown): value
   if (parameter.type === 'number') return typeof value === 'number' && Number.isFinite(value) && value >= parameter.min && value <= parameter.max
   if (parameter.type === 'boolean') return typeof value === 'boolean'
   if (parameter.type === 'color') return typeof value === 'string' && /^#[\da-f]{6}$/i.test(value)
+  if (parameter.type === 'text') return typeof value === 'string' && value.length <= (parameter.maxLength ?? 10000)
   return typeof value === 'string' && parameter.options.some((option) => option.value === value)
 }
 
@@ -274,6 +281,9 @@ export async function startPreview(canvas: HTMLCanvasElement, project: Project, 
         } else if (parameter.type === 'color') {
           if (typeof value !== 'string' || !/^#[\da-f]{6}$/i.test(value)) throw new Error(`Invalid color for parameter: ${id}`)
           parameterValues[id] = value
+        } else if (parameter.type === 'text') {
+          if (typeof value !== 'string' || value.length > (parameter.maxLength ?? 10000)) throw new Error(`Invalid text for parameter: ${id}`)
+          parameterValues[id] = value
         } else {
           if (typeof value !== 'string' || !parameter.options.some((option) => option.value === value)) throw new Error(`Invalid option for parameter: ${id}`)
           parameterValues[id] = value
@@ -353,6 +363,7 @@ ${opaqueOriginHistoryCompatibilityScript};
   addEventListener('unhandledrejection', (event) => parent.postMessage({ type: 'workbench-error', message: String(event.reason || 'Unhandled page promise rejection') }, '*'))
   const values = Object.create(null)
   let definitions = []
+  const dispatchParameters = (change) => document.dispatchEvent(Object.assign(new CustomEvent('workbench:params', { detail: values }), { workbenchChange: change }))
   const setCssValue = (id, value) => document.documentElement.style.setProperty('--param-' + id, typeof value === 'boolean' ? (value ? '1' : '0') : String(value))
   const define = (input) => {
     definitions = Object.entries(input).map(([id, definition]) => ({ id, ...definition }))
@@ -371,15 +382,20 @@ ${opaqueOriginHistoryCompatibilityScript};
     if (data?.type === 'workbench-set-parameter' && data.id in values) {
       values[data.id] = data.value
       setCssValue(data.id, data.value)
-      document.dispatchEvent(new CustomEvent('workbench:params', { detail: values }))
+      dispatchParameters({ ids: [data.id] })
+    }
+    if (data?.type === 'workbench-set-parameters') {
+      const ids = Object.keys(data.values || {}).filter(id => id in values)
+      for (const id of ids) { values[id] = data.values[id]; setCssValue(id, data.values[id]) }
+      dispatchParameters({ ids, restore: true })
     }
     if (data?.type === 'workbench-reset-parameters') {
       for (const parameter of definitions) {
         values[parameter.id] = parameter.default
         setCssValue(parameter.id, parameter.default)
       }
-      document.dispatchEvent(new CustomEvent('workbench:params', { detail: values }))
-      parent.postMessage({ type: 'workbench-parameters', parameters: definitions, values: { ...values } }, '*')
+      dispatchParameters({ ids: definitions.map(parameter => parameter.id), restore: true, reset: true })
+      parent.postMessage({ type: 'workbench-parameter-values', values: { ...values } }, '*')
     }
   })
   window.workbench = { params: { define, values } }
@@ -419,7 +435,7 @@ ${opaqueOriginHistoryCompatibilityScript};
       return
     }
     if (event.data?.type !== 'workbench-parameters') return
-    if (!Array.isArray(event.data.parameters) || event.data.parameters.length > 100 || !event.data.parameters.every(isHtmlParameterDefinition)) return
+    if (!Array.isArray(event.data.parameters) || event.data.parameters.length > 256 || !event.data.parameters.every(isHtmlParameterDefinition)) return
     const nextParameters = event.data.parameters as ParameterDefinition[]
     const nextValues = event.data.values
     if (!nextValues || typeof nextValues !== 'object' || Array.isArray(nextValues)) return
@@ -432,15 +448,15 @@ ${opaqueOriginHistoryCompatibilityScript};
       const value = overrides[parameter.id]
       if (value !== undefined && isParameterValue(parameter, value)) {
         parameterValues[parameter.id] = value
-        frame.contentWindow?.postMessage({ type: 'workbench-set-parameter', id: parameter.id, value }, '*')
       }
     }
+    if (Object.keys(overrides).length) frame.contentWindow?.postMessage({ type: 'workbench-set-parameters', values: { ...parameterValues } }, '*')
     initialized = true
     onParameters(parameters, { ...parameterValues })
   }
   const syncState = () => {
     syncPausedState()
-    for (const [id, value] of Object.entries(parameterValues)) frame.contentWindow?.postMessage({ type: 'workbench-set-parameter', id, value }, '*')
+    if (parameters.length) frame.contentWindow?.postMessage({ type: 'workbench-set-parameters', values: { ...parameterValues } }, '*')
   }
   window.addEventListener('message', onMessage)
   frame.addEventListener('load', syncState)

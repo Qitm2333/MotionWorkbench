@@ -168,6 +168,7 @@ function draw() {
   push();
   translate(-width/2,-height/2);
 
+  if (!document.documentElement.classList.contains('workbench-source-controls-hidden')) {
   fill(foreColor);
   textAlign(LEFT);
   textSize(10);
@@ -191,6 +192,7 @@ function draw() {
 
   textSize(12);
   text("Click & drag to lay down points. Press ENTER to start a new string.",10,height-170);
+  }
 
   let particleCt = particles[squiggleCount-1].length;
   if(draggedIn){
@@ -511,6 +513,18 @@ function setStripChoice(){
 function setStripCountChoice(){
   stripCountChoice = stripCountSlider.value();
 }
+
+// Upstream presets set these lexical values directly without updating the UI.
+// Mirror their actual state after setup/presets before Workbench reads controls.
+window.spaceTypeSyncControls = function () {
+  stripCountSlider.elt.max = '14'; // b5 (Yes &) intentionally uses fourteen strips.
+  stripCountSlider.value(stripCountChoice);
+  stripRadio.selected(' '.repeat(stripChoice + 1));
+  const labels = ['Text', 'Gradient 1', 'Gradient 2', 'Stripes', 'All', 'Mixture'];
+  stripRadio.elt.querySelectorAll('input').forEach((input, index) => {
+    input.setAttribute('aria-label', labels[index]);
+  });
+};
 
 function resetBasic(){
   sel.selected(0);

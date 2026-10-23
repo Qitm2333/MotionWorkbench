@@ -3,10 +3,12 @@
   const context = canvas.getContext('2d');
   const phrase = document.querySelector('#phrase');
   const definitions = {
+    text: { type: 'text', label: 'Text', default: 'I-TRY-ALL-THINGS;-I-ACHIEVE-WHAT-I-CAN.//', multiline: true, maxLength: 2000, group: 'Content' },
     radius: { type: 'number', label: 'Cylinder radius', default: 250, min: 0, max: 1000, step: 1, group: 'Cylinder' },
     stackNum: { type: 'number', label: 'Cylinder count', default: 1, min: 1, max: 30, step: 1, group: 'Cylinder' },
     rRotate: { type: 'number', label: 'Cylinder rotate', default: -5, min: -100, max: 100, step: 1, group: 'Cylinder' },
     rOffset: { type: 'number', label: 'Cylinder offset', default: 0, min: 0, max: Math.PI / 2, step: 0.01, group: 'Cylinder' },
+    stackHeightAdjust: { type: 'number', label: 'Layer height adjustment', default: 0, min: 0, max: 100, step: 1, group: 'Cylinder' },
     rWaveCount: { type: 'number', label: 'Wave count', default: 2, min: 0, max: 10, step: 1, group: 'Wave' },
     rWaveSpeed: { type: 'number', label: 'Wave speed', default: 0, min: 0, max: 100, step: 1, group: 'Wave' },
     rWave: { type: 'number', label: 'Wave latitude', default: 0, min: 0, max: 200, step: 1, group: 'Wave' },
@@ -48,10 +50,8 @@
   let width = 0;
   let height = 0;
   let ratio = 1;
-  let stackHeightAdjust = 0;
   let activePreset = String(params.preset || 'Custom');
   let previousValues = { ...params };
-  let parameterSyncReady = false;
 
   function publishParameters() {
     window.parent.postMessage({ type: 'workbench-parameter-values', values: { ...params } }, '*');
@@ -64,7 +64,7 @@
       if (definition.type === 'number') params[id] = definition.default;
     }
     Object.assign(params, values, { preset: name });
-    stackHeightAdjust = name === 'Weave' || name === 'Hoops' ? 30 : name === 'Zebra' ? 10 : 0;
+    params.stackHeightAdjust = name === 'Weave' || name === 'Hoops' ? 30 : name === 'Zebra' ? 10 : 0;
     activePreset = name;
     previousValues = { ...params };
     if (publish) publishParameters();
@@ -163,9 +163,9 @@
     context.setTransform(ratio, 0, 0, ratio, 0, 0);
     context.fillStyle = params.backgroundColor;
     context.fillRect(0, 0, width, height);
-    const chars = [...(phrase.value || ' ')];
+    const chars = [...(String(params.text) || ' ')];
     const count = Math.max(1, Math.min(30, Math.round(Number(params.stackNum))));
-    const stackHeight = Number(params.typeY) + Number(params.strecherYsize) / 2 + 5 + stackHeightAdjust;
+    const stackHeight = Number(params.typeY) + Number(params.strecherYsize) / 2 + 5 + Number(params.stackHeightAdjust);
     const glyphs = [];
     for (let row = 0; row < count; row++) {
       for (let col = 0; col < chars.length; col++) {
@@ -186,17 +186,20 @@
   }
 
   let currentElapsed = 0;
-  phrase.addEventListener('input', () => render(currentElapsed));
+  phrase.hidden = true;
   window.addEventListener('resize', resize);
   document.addEventListener('workbench:params', (event) => {
-    const values = event.detail || {};
-    const changed = Object.keys(definitions).filter((id) => values[id] !== previousValues[id]);
-    Object.assign(params, values);
-    if (!parameterSyncReady) {
+    const values = { ...event.detail };
+    if (event.workbenchChange?.restore) {
+      if (values.preset !== 'Custom') applyPreset(values.preset, false);
+      Object.assign(params, values);
+      activePreset = params.preset;
       previousValues = { ...params };
       render(currentElapsed);
       return;
     }
+    const changed = Object.keys(definitions).filter((id) => values[id] !== previousValues[id]);
+    Object.assign(params, values);
     const presetChanged = changed.includes('preset') && values.preset !== activePreset;
     if (changed.includes('pride') && params.pride) {
       params.stackNum = 6;
@@ -205,7 +208,7 @@
       previousValues = { ...params };
       publishParameters();
     } else if (presetChanged && values.preset !== 'Custom') applyPreset(values.preset);
-    else if (changed.some((id) => id !== 'preset') && activePreset !== 'Custom') {
+    else if (changed.some((id) => id !== 'preset' && id !== 'text') && activePreset !== 'Custom') {
       params.preset = 'Custom';
       activePreset = 'Custom';
       publishParameters();
@@ -225,10 +228,5 @@
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
-  window.setTimeout(() => {
-    parameterSyncReady = true;
-    activePreset = String(params.preset || 'Custom');
-    previousValues = { ...params };
-  }, 100);
   window.addEventListener('pagehide', () => window.removeEventListener('resize', resize), { once: true });
 })();

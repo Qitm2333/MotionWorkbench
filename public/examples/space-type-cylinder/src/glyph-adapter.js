@@ -5,6 +5,8 @@
   window.push = () => context.save();
   window.pop = () => context.restore();
   window.translate = (x, y) => context.translate(x, y);
+  window.atan = Math.atan;
+  window.tan = Math.tan;
   window.beginShape = () => { context.beginPath(); firstVertex = true; };
   window.vertex = (x, y) => {
     if (firstVertex) context.moveTo(x, y);

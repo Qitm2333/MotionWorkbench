@@ -113,7 +113,7 @@ function draw() {
   noStroke();
   textSize(9);
     if(fluxSave == true || scrollSave == true){
-    } else {
+    } else if (!document.documentElement.classList.contains('workbench-source-controls-hidden')) {
       text("Rows " + rows, 10, height-55);
       text("Weight " + typeStroke, 10, height-25);
       text("Tracking " + tracking, 125, height-55);

@@ -5,11 +5,11 @@
   "entry": "index.html",
   "renderer": { "type": "html" },
   "sourceFiles": ["index.html", "style.css", "src/glyph-adapter.js", "src/keyboardEngine_190103.js", "src/main.js"],
-  "assetFiles": ["assets/IBMPlexMono-Regular.otf", "assets/OFL.md"],
+  "assetFiles": ["assets/IBMPlexMono-Regular.otf", "assets/OFL.md", "EVIDENCE.md", "CC-BY-NC-SA-4.0.md"],
   "metadata": {
     "source": "https://spacetypegenerator.com/field",
     "referenceRoute": "/field",
     "referenceRenderer": "p5.js WEBGL",
-    "licenseNote": "The IBM Plex Mono font is redistributed under the SIL Open Font License 1.1; see assets/OFL.md. The font is applied to locally rendered Field glyphs."
+    "licenseNote": "Source vector glyph engine by Kiel Mutschelknaus under CC BY-NC-SA 4.0; see CC-BY-NC-SA-4.0.md. IBM Plex Mono under SIL OFL 1.1; see assets/OFL.md."
   }
 }

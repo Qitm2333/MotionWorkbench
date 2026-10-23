@@ -83,7 +83,7 @@ const existingExamples: Example[] = [
     highlights: [
       'Adjust the Cylinder, Wave, Type, Form Tweak, Camera, and Color parameters in the Parameters panel.',
       'Select Simple, Jellyfish, Crown, Complex, Weave, Zebra, or Hoops to apply the observed source values.',
-      'The reference is p5 WEBGL with a custom vector keyboard and IBM Plex Mono; this local study uses Canvas2D projection with the byte-identical IBM Plex Mono asset.',
+      'Uses the source vector keyboard through a Canvas2D adapter; projection and antialiasing differ from p5 WEBGL.',
     ],
     projectDirectory: 'space-type-cylinder',
     viewport: '1440x900',
@@ -98,7 +98,7 @@ const existingExamples: Example[] = [
     highlights: [
       'Choose Full Text or a single pass through the input phrase, then shape its grid with the source parameters.',
       'Select Stacks, Bricks, Simple Z, Complex Z, Zebra, or Harlequin to apply the observed source values.',
-      'The reference is p5 WEBGL with custom vector glyphs; this local study uses Canvas2D projection and IBM Plex Mono for its locally rendered glyphs.',
+      'Uses the source vector keyboard through a Canvas2D adapter; projection and antialiasing differ from p5 WEBGL.',
     ],
     projectDirectory: 'space-type-field',
     viewport: '1440x900',

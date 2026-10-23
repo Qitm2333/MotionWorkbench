@@ -218,6 +218,7 @@ function draw() {
   fill(bkgdColor);
   textSize(10);
   textAlign(LEFT);
+  if (!document.documentElement.classList.contains('workbench-source-controls-hidden')) {
   push();
   translate(-width/2, -height/2);
     text("Layers " + stackCount,25,80);
@@ -230,6 +231,7 @@ function draw() {
     text("Upward ",52,321);
     text("PRESETS",25,height-170);
   pop();
+  }
 }
 
 function setFont() {

@@ -3,6 +3,7 @@
   const context = canvas.getContext('2d');
   const phrase = document.querySelector('#phrase');
   const definitions = {
+    text: { type: 'text', label: 'Text', default: 'WORDS MOVE THROUGH OPEN SPACE. LETTERS BEND AROUND INVISIBLE FORCES AND DRIFT ACROSS THE PAGE. SMALL PATTERNS GROW INTO LARGER FIELDS, EACH LINE FINDING ITS OWN PACE. SHAPES STRETCH, TILT, AND TRAVEL THROUGH A QUIET LANDSCAPE OF TYPE.', multiline: true, maxLength: 4000, group: 'Content' },
     column: { type: 'number', label: 'Columns', default: 21, min: 1, max: 200, step: 1, group: 'Grid' },
     row: { type: 'number', label: 'Rows', default: 21, min: 1, max: 200, step: 1, group: 'Grid' },
     tracking: { type: 'number', label: 'Tracking', default: 5, min: -10, max: 100, step: 1, group: 'Grid' },
@@ -60,7 +61,6 @@
   let width = 0, height = 0, ratio = 1;
   let activePreset = String(params.preset || 'Custom');
   let previousValues = { ...params };
-  let parameterSyncReady = false;
   function activePaletteCount() {
     for (let index = 4; index >= 0; index--) if (params[`color${index + 1}Enabled`]) return index + 1;
     return 1;
@@ -163,7 +163,7 @@
     context.setTransform(ratio, 0, 0, ratio, 0, 0);
     context.fillStyle = params.backgroundColor;
     context.fillRect(0, 0, width, height);
-    const text = [...(phrase.value || ' ')];
+    const text = [...(String(params.text) || ' ')];
     const columns = Math.max(1, Math.round(Number(params.column)));
     const rows = Math.max(1, Math.round(Number(params.row)));
     const count = params.fullText ? columns * rows : text.length;
@@ -191,13 +191,20 @@
     canvas.width = Math.round(width * ratio);
     canvas.height = Math.round(height * ratio);
   }
-  phrase.addEventListener('input', () => render(0));
+  let currentElapsed = 0;
+  phrase.hidden = true;
   window.addEventListener('resize', resize);
   document.addEventListener('workbench:params', (event) => {
-    const values = event.detail || {};
+    const values = { ...event.detail };
+    if (event.workbenchChange?.restore) {
+      Object.assign(params, values);
+      activePreset = params.preset;
+      previousValues = { ...params };
+      render(currentElapsed);
+      return;
+    }
     const changed = Object.keys(definitions).filter((id) => values[id] !== previousValues[id]);
     Object.assign(params, values);
-    if (!parameterSyncReady) { previousValues = { ...params }; render(0); return; }
     const presetChanged = changed.includes('preset') && values.preset !== activePreset;
     const paletteChange = changed.find((id) => /^color[1-5]Enabled$/.test(id));
     if (paletteChange) {
@@ -212,25 +219,20 @@
       activePreset = 'Custom';
       publishParameters();
     } else if (presetChanged && values.preset !== 'Custom') applyPreset(values.preset);
-    else if (changed.some((id) => id !== 'preset') && activePreset !== 'Custom') {
+    else if (changed.some((id) => id !== 'preset' && id !== 'text') && activePreset !== 'Custom') {
       params.preset = 'Custom';
       activePreset = 'Custom';
       publishParameters();
     } else if (values.preset === 'Custom') activePreset = 'Custom';
     previousValues = { ...params };
-    render(0);
+    render(currentElapsed);
   });
   resize();
   let lastDraw = 0;
   function frame(now) {
-    if (now - lastDraw >= 1000 / 30) { render(now / 1000); lastDraw = now; }
+    if (now - lastDraw >= 1000 / 30) { currentElapsed = now / 1000; render(currentElapsed); lastDraw = now; }
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
-  window.setTimeout(() => {
-    parameterSyncReady = true;
-    activePreset = String(params.preset || 'Custom');
-    previousValues = { ...params };
-  }, 100);
   window.addEventListener('pagehide', () => window.removeEventListener('resize', resize), { once: true });
 })();

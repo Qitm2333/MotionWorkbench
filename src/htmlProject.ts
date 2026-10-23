@@ -56,6 +56,20 @@ export function previewBootstrap(session: string) {
         } })
       }
     }
+    // Older p5 language detection reads cookies during initialization. Opaque
+    // iframe origins cannot access them; keep the fallback local to this preview.
+    try { void document.cookie } catch {
+      const cookies = new Map<string, string>()
+      Object.defineProperty(document, 'cookie', {
+        configurable: true,
+        get: () => [...cookies].map(([name, value]) => `${name}=${value}`).join('; '),
+        set: (value: string) => {
+          const pair = String(value).split(';', 1)[0]
+          const separator = pair.indexOf('=')
+          if (separator > 0) cookies.set(pair.slice(0, separator).trim(), pair.slice(separator + 1))
+        },
+      })
+    }
     const urls = new Map<string, string>()
     const created: string[] = []
     const blob = (body: BlobPart, type: string) => { const url = URL.createObjectURL(new Blob([body], { type })); created.push(url); return url }

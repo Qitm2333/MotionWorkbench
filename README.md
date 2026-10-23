@@ -108,7 +108,9 @@ export function create({ ctx, width, height, params }: WorkbenchCanvasContext) {
 }
 ```
 
-Supported types are `number` (with `min`, `max`, and optional `step`), `boolean`, `color` (a hex color), and `select` (with `options: [{ label, value }]`). `group` is optional and organizes related controls.
+Supported types are `number` (with `min`, `max`, and optional `step`), `boolean`, `color` (a hex color), `select` (with `options: [{ label, value }]`), and `text` (optional `multiline` and `maxLength`, up to 10,000 characters). `group` is optional and organizes related controls.
+
+Typography studies expose their source text and available presets in **Parameters**. Original page controls and canvas-painted labels are hidden to keep one editing surface. Selecting a preset runs the source callback and synchronizes its resulting values back to the panel; parameter edits update the existing preview. The palette count also records source state that some original preset buttons do not reflect in their checkboxes.
 
 Canvas scenes can also sample a named project curve:
 

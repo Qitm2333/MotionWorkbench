@@ -108,6 +108,8 @@
 .parameter-card .parameter-color, .parameter-card .parameter-checkbox { justify-self: end; }
 .parameter-card .parameter-color { width: 54px; height: 32px; }
 .parameter-card .parameter-checkbox { width: 18px; height: 18px; }
+.parameter-card .parameter-text { width: min(100%, 520px); min-height: 30px; justify-self: end; padding: 6px 8px; border: 1px solid #454f49; border-radius: 3px; background: #1e2421; color: #e2e8e4; font: 11px var(--mono); }
+.parameter-card .parameter-textarea { min-height: 68px; resize: vertical; line-height: 1.45; }
 .parameter-empty-state { max-width: 960px; margin: 0 auto; padding: 18px 12px; color: #8e9992; font-size: 12px; }
 .curve-editor .panel-tabs { display: flex; }
 .curve-id { margin-left: 8px; color: #88938c; font: 9px var(--mono); }
@@ -287,7 +289,8 @@
 .workbench[data-theme="dark"] .parameter-label small,
 .workbench[data-theme="dark"] .parameter-empty-state { color: #9d9d9d; }
 .workbench[data-theme="dark"] .parameter-card .parameter-number input[type="number"],
-.workbench[data-theme="dark"] .parameter-card select { color: #cccccc; background: #1e1e1e; border-color: #454545; }
+.workbench[data-theme="dark"] .parameter-card select,
+.workbench[data-theme="dark"] .parameter-card .parameter-text { color: #cccccc; background: #1e1e1e; border-color: #454545; }
 .workbench[data-theme="dark"] .panel-tabs { background: #252526; border-color: #333333; }
 .workbench[data-theme="dark"] .active-tab { color: #ffffff; background: #1e1e1e; border-top-color: #007acc; }
 .workbench[data-theme="dark"] .active-tab svg { color: #75beff; }
@@ -392,7 +395,8 @@
 .workbench[data-theme="light"] .parameter-label small,
 .workbench[data-theme="light"] .parameter-empty-state { color: #777777; }
 .workbench[data-theme="light"] .parameter-card .parameter-number input[type="number"],
-.workbench[data-theme="light"] .parameter-card select { color: #333333; background: #ffffff; border-color: #cccccc; }
+.workbench[data-theme="light"] .parameter-card select,
+.workbench[data-theme="light"] .parameter-card .parameter-text { color: #333333; background: #ffffff; border-color: #cccccc; }
 .workbench[data-theme="light"] .curve-editor-grid { stroke: #c5cbc7; }
 .workbench[data-theme="light"] .curve-editor-handle-line { stroke: #9aa39d; }
 .workbench[data-theme="light"] .curve-editor-line { stroke: #007acc; }
