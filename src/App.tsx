@@ -3,7 +3,7 @@ import type { DragEvent as ReactDragEvent, PointerEvent as ReactPointerEvent, Re
 import Editor, { loader } from '@monaco-editor/react'
 import './monaco-workers'
 import * as monaco from 'monaco-editor'
-import { ModuleResolutionKind, typescriptDefaults } from 'monaco-editor/languages/features/typescript/register.js'
+import { ModuleKind, ModuleResolutionKind, typescriptDefaults } from 'monaco-editor/languages/features/typescript/register.js'
 import { Activity, AlertCircle, BookOpen, Box, Check, ChevronDown, ChevronRight, Circle, Copy, Download, FileCode2, FilePlus2, Folder, FolderOpen, FolderPlus, Maximize2, Minimize2, Minus, Moon, Package, Pencil, Play, Plus, RotateCcw, Save, SlidersHorizontal, Square, Sun, Trash2, Upload, Waves, X } from 'lucide-react'
 import './App.css'
 import { createCurveFromPreset, curvePresets, isAllowedProjectFile, isProjectEntry, isProjectSource, readProjectDirectory, sampleCurveValue, starterHtmlProject, starterProject, starterReactProject, validateProject, writeProjectDirectory } from './project'
@@ -73,6 +73,10 @@ function buildFileTree(paths: string[]): FileTreeNode[] {
   }
   sort(root)
   return root
+}
+
+function projectModelUri(projectName: string, path: string) {
+  return monaco.Uri.from({ scheme: 'file', path: `/motion-workbench/${encodeURIComponent(projectName)}/${path}` })
 }
 
 function resolveRelativeProjectPath(fromFile: string, reference: string) {
@@ -158,7 +162,7 @@ function App() {
   const runtimeRef = useRef<PreviewRuntime | null>(null)
   const projectRef = useRef(project)
   const directoryRef = useRef<DirectoryHandle | null>(null)
-  const projectModelsRef = useRef(new Set<string>())
+  const projectModelsRef = useRef(new Map<string, Set<string>>())
   const importInputRef = useRef<HTMLInputElement>(null)
   const applyRequestRef = useRef(0)
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
@@ -226,12 +230,18 @@ function App() {
     typescriptDefaults.setCompilerOptions({
       ...typescriptDefaults.getCompilerOptions(),
       allowNonTsExtensions: true,
-      moduleResolution: ModuleResolutionKind.NodeJs,
+      allowImportingTsExtensions: true,
+      module: ModuleKind.ESNext,
+      moduleResolution: 100 as ModuleResolutionKind,
       noEmit: true,
     })
+  }, [])
+
+  useEffect(() => {
+    const projectKey = project.manifest.name
     const currentModels = new Set<string>()
     for (const [path, contents] of Object.entries(project.files)) {
-      const uri = monaco.Uri.parse(`file:///${path}`)
+      const uri = projectModelUri(projectKey, path)
       const key = uri.toString()
       currentModels.add(key)
       const language = /\.html?$/i.test(path) ? 'html' : /\.css$/i.test(path) ? 'css' : /\.tsx?$/i.test(path) ? 'typescript' : 'javascript'
@@ -243,11 +253,11 @@ function App() {
         monaco.editor.createModel(contents, language, uri)
       }
     }
-    for (const key of projectModelsRef.current) {
+    for (const key of projectModelsRef.current.get(projectKey) ?? []) {
       if (!currentModels.has(key)) monaco.editor.getModel(monaco.Uri.parse(key))?.dispose()
     }
-    projectModelsRef.current = currentModels
-  }, [project.files])
+    projectModelsRef.current.set(projectKey, currentModels)
+  }, [project.files, project.manifest.name])
 
   const updateFile = (contents: string | undefined) => {
     if (contents === undefined) return
@@ -994,8 +1004,9 @@ function App() {
             <div className="panel-tabs"><div className="active-tab"><FileCode2 size={13} />{activeFile}<span className="tab-dirty">{saved ? '' : '●'}</span></div><div className="editor-actions"><span>{editorLanguage === 'typescript' ? 'TypeScript' : editorLanguage.toUpperCase()}</span><div className="editor-font-controls" role="group" aria-label="Code editor font size"><button className="icon-button editor-font-button" onClick={() => setEditorFontSize((size) => Math.max(minEditorFontSize, size - 1))} disabled={editorFontSize <= minEditorFontSize} title="Decrease code font size" aria-label="Decrease code font size"><Minus size={13} /></button><output className="editor-font-readout" aria-live="polite">{editorFontSize}px</output><button className="icon-button editor-font-button" onClick={() => setEditorFontSize((size) => Math.min(maxEditorFontSize, size + 1))} disabled={editorFontSize >= maxEditorFontSize} title="Increase code font size" aria-label="Increase code font size"><Plus size={13} /></button><button className="icon-button editor-font-button editor-font-reset" onClick={() => setEditorFontSize(defaultEditorFontSize)} disabled={editorFontSize === defaultEditorFontSize} title="Reset code font size" aria-label="Reset code font size"><RotateCcw size={12} /></button></div><span>UTF-8</span></div></div>
             <div className="editor-body">
               <Editor
+                key={projectLoadId}
                 height="100%"
-                path={monaco.Uri.parse(`file:///${activeFile}`).toString()}
+                path={projectModelUri(project.manifest.name, activeFile).toString()}
                 language={editorLanguage}
                 value={project.files[activeFile] ?? ''}
                 onChange={updateFile}

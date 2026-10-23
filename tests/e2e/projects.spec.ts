@@ -55,6 +55,18 @@ test('Examples browser fits a narrow viewport and scrolls its results independen
   await expect(dialog.getByRole('button', { name: /Open example/ })).toBeVisible()
 })
 
+test('Orbit study resolves project-relative TypeScript imports in the editor', async ({ page }) => {
+  await page.goto('./')
+  await openExample(page, 'Motion postcard')
+  await openExample(page, 'Orbit study')
+  await expect(page.locator('.statusbar')).toContainText('Running')
+  await page.waitForTimeout(2500)
+  await expect(page.locator('.monaco-editor .squiggly-error')).toHaveCount(0)
+  await page.getByRole('button', { name: 'orbit-scene.ts', exact: true }).click()
+  await expect(page.locator('.monaco-editor .squiggly-error')).toHaveCount(0)
+  await expect(page.locator('canvas[aria-label="Canvas2D animation preview"]')).toBeVisible()
+})
+
 async function openExample(page: Page, name: string) {
   await page.getByTitle('Browse examples').click()
   await page.getByRole('button', { name: new RegExp(name) }).click()

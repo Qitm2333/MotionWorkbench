@@ -117,7 +117,13 @@ export const starterProject: Project = {
   | { type: 'select'; label: string; default: string; options: Array<{ label: string; value: string }>; group?: string }
 
 interface WorkbenchParameterApi {
-  define<const T extends Record<string, WorkbenchParameterDefinition>>(definitions: T): { [K in keyof T]: T[K]['default'] }
+  define<const T extends Record<string, WorkbenchParameterDefinition>>(definitions: T): {
+    [K in keyof T]: T[K] extends { type: 'select'; options: readonly { value: infer Value }[] }
+      ? Value
+      : T[K] extends { type: 'number' } ? number
+        : T[K] extends { type: 'boolean' } ? boolean
+          : string
+  }
 }
 
 interface WorkbenchCurveApi {
