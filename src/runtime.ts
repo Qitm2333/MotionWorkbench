@@ -8,6 +8,20 @@ import { prepareHtmlProject, previewBootstrap } from './htmlProject'
 
 const vendorSources = new Map<string, Promise<string>>()
 const previewOwners = new WeakMap<HTMLIFrameElement, string>()
+let reactRuntimeSource: Promise<string> | undefined
+
+async function loadReactRuntime(url: string) {
+  if (!reactRuntimeSource) {
+    reactRuntimeSource = fetch(url).then(async (response) => {
+      if (!response.ok) throw new Error(`Bundled React runtime failed to load (${response.status}).`)
+      return response.text()
+    }).catch((error) => {
+      reactRuntimeSource = undefined
+      throw error
+    })
+  }
+  return reactRuntimeSource
+}
 
 function normalize(path: string) {
   return normalizeProjectPath(path)
@@ -339,7 +353,9 @@ export async function startHtmlPreview(frame: HTMLIFrameElement, project: Projec
   html = prepared.html
   if (project.manifest.projectType === 'react') {
     const runtimeUrl = new URL(`${import.meta.env.BASE_URL}vendor/react/19.3.1/runtime.js`, location.href).href
-    const runtimeScript = `<script src="${runtimeUrl}" onerror="parent.postMessage({type:'workbench-error',message:'Bundled React runtime failed to load.'}, '*')"></script>`
+    const runtimeSource = await loadReactRuntime(runtimeUrl)
+    const safeSource = JSON.stringify(runtimeSource).replaceAll('<', '\\u003c')
+    const runtimeScript = `<script>eval(${safeSource})</script>`
     html = html.replace(/<head\b[^>]*>/i, (head) => `${head}${runtimeScript}`)
   }
   if (!shouldCommit()) throw new Error('Preview build was superseded by a newer version')
