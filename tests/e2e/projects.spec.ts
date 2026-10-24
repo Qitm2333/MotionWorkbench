@@ -324,6 +324,10 @@ test('all imported React blocks mount with the fixed dependency runtime', async 
   for (const example of blocks) {
     await openExample(page, example.name)
     await expect(frame.locator('#root > .bencho-example'), example.name).toBeVisible()
+    await expect.poll(() => frame.locator('html').evaluate(() => {
+      const runtime = (globalThis as typeof globalThis & { MotionWorkbenchReact?: { ReactDOMClient?: { createRoot?: unknown } } }).MotionWorkbenchReact
+      return typeof runtime?.ReactDOMClient?.createRoot
+    }), { message: `${example.name} should receive the bundled ReactDOM client runtime` }).toBe('function')
     await expect(page.locator('.statusbar'), example.name).not.toContainText('Build failed')
   }
   expect(errors).toEqual([])

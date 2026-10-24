@@ -73,7 +73,7 @@ export async function compileProject(project: Project) {
         plugin.onLoad({ filter: /.*/, namespace: 'react-runtime' }, (args) => {
           const react = 'globalThis.MotionWorkbenchReact'
           if (args.path === 'react') return { loader: 'js', contents: `const React=${react}.React;export default React;export const {Children,Component,Fragment,Profiler,Suspense,cloneElement,createContext,createElement,forwardRef,isValidElement,lazy,memo,startTransition,useCallback,useContext,useDebugValue,useDeferredValue,useEffect,useId,useImperativeHandle,useLayoutEffect,useMemo,useReducer,useRef,useState,useSyncExternalStore,useTransition}=React;` }
-          if (args.path === 'react-dom/client') return { loader: 'js', contents: `const Client=${react}.ReactDOMClient;export const {createRoot,hydrateRoot}=Client;` }
+          if (args.path === 'react-dom/client') return { loader: 'js', contents: `const Client=${react}?.ReactDOMClient;if(typeof Client?.createRoot!=='function')throw new Error('MotionWorkbench ReactDOMClient runtime is unavailable. Check that the bundled React runtime loaded before project modules.');export const {createRoot,hydrateRoot}=Client;` }
           if (args.path === 'react/jsx-runtime') return { loader: 'js', contents: `const JSX=${react}.JSXRuntime;export const {Fragment,jsx,jsxs}=JSX;` }
           if (args.path === 'framer-motion') return { loader: 'js', contents: `const Motion=${react}.Motion;export const {AnimatePresence,animate,motion,useAnimationControls,useMotionValue,useSpring,useTransform,useVelocity}=Motion;` }
           if (args.path === 'lucide-react') return { loader: 'js', contents: `const Icons=${react}.Icons;export const {ArrowDown,ArrowRight,Bookmark,Check,CircleCheck,CircleX,Copy,FileText,Folder,GitCommitHorizontal,Grid2x2,Heart,House,Info,Link2,Pause,Phone,Plane,Play,Plus,RefreshCw,Search,Settings2,SkipBack,SkipForward,SmilePlus,Table2,Timer,TriangleAlert,Upload,User,X,Eye,EyeOff,ChevronDown}=Icons;export {Upload as UpIcon};` }
@@ -339,7 +339,8 @@ export async function startHtmlPreview(frame: HTMLIFrameElement, project: Projec
   html = prepared.html
   if (project.manifest.projectType === 'react') {
     const runtimeUrl = new URL(`${import.meta.env.BASE_URL}vendor/react/19.3.1/runtime.js`, location.href).href
-    html = html.replace(/<head\b[^>]*>/i, (head) => `${head}<script src="${runtimeUrl}"></script>`)
+    const runtimeScript = `<script src="${runtimeUrl}" onerror="parent.postMessage({type:'workbench-error',message:'Bundled React runtime failed to load.'}, '*')"></script>`
+    html = html.replace(/<head\b[^>]*>/i, (head) => `${head}${runtimeScript}`)
   }
   if (!shouldCommit()) throw new Error('Preview build was superseded by a newer version')
   const bridgeScript = `<script>
