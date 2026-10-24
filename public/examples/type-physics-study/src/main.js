@@ -458,6 +458,17 @@
 
   function drawContour(width, color, blur) {
     if (width <= 0) return;
+    // Safari versions without CanvasRenderingContext2D.filter cannot run the
+    // blurred luminance-mask pipeline. Keep the contour visible with a native
+    // text stroke; the final fill pass in render() covers its inner half.
+    if (typeof filteredCtx.filter !== 'string') {
+      ctx.save();
+      ctx.lineJoin = params.lineJoin;
+      ctx.miterLimit = Number(params.joinAmount);
+      drawGlyphs(ctx, null, color, width * 2);
+      ctx.restore();
+      return;
+    }
     maskCtx.fillStyle = '#000000';
     maskCtx.fillRect(0, 0, mask.width, mask.height);
     drawGlyphs(maskCtx, '#ffffff', '#ffffff', width * 2, PAD);

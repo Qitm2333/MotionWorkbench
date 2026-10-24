@@ -15,12 +15,17 @@ test('Type Physics study preserves the traced layout, physics, actions, drag, an
   await expect(canvas).toBeVisible()
   await expect(page.locator('.parameter-count')).toHaveText('32')
   await expect.poll(() => diagnostics.evaluate((element: HTMLOutputElement) => JSON.parse(element.value).letters)).toBe(10)
+  await page.locator('iframe[title="Project preview"]').evaluate((element) => {
+    (element as HTMLIFrameElement).contentWindow?.postMessage({ type: 'workbench-set-parameter', id: 'textColor', value: '#ff0000' }, '*')
+  })
   await expect.poll(() => canvas.evaluate((element: HTMLCanvasElement) => {
     const pixels = element.getContext('2d')!.getImageData(0, 0, element.width, element.height).data
-    let light = 0
-    for (let index = 0; index < pixels.length; index += 256) if (pixels[index] > 180) light++
-    return light
-  })).toBeGreaterThan(100)
+    let white = 0
+    for (let index = 0; index < pixels.length; index += 4) {
+      if (pixels[index] > 220 && pixels[index + 1] > 220 && pixels[index + 2] > 220) white++
+    }
+    return white
+  })).toBeGreaterThan(10_000)
 
   await page.getByRole('button', { name: /Parameters/ }).click()
   const layout = page.getByRole('combobox', { name: 'Layout direction' })
