@@ -352,7 +352,8 @@ export async function startHtmlPreview(frame: HTMLIFrameElement, project: Projec
   const prepared = await prepareHtmlProject(project, compileProject)
   html = prepared.html
   if (project.manifest.projectType === 'react') {
-    const runtimeUrl = new URL(`${import.meta.env.BASE_URL}vendor/react/19.3.1/runtime.js`, location.href).href
+    const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`
+    const runtimeUrl = new URL('vendor/react/19.3.1/runtime.js', new URL(baseUrl, location.href)).href
     const runtimeSource = await loadReactRuntime(runtimeUrl)
     const safeSource = JSON.stringify(runtimeSource).replaceAll('<', '\\u003c')
     const runtimeScript = `<script>eval(${safeSource})</script>`

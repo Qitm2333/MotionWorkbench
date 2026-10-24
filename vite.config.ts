@@ -9,6 +9,9 @@ import { join } from 'node:path'
 function threeRuntime() {
   const files = new Map<string, string>()
   const root = join(import.meta.dirname, 'node_modules/three')
+  const marker = '/vendor/three/0.180.0/'
+  const basePath = process.env.BASE_PATH || '/'
+  const devMarker = new URL(marker.slice(1), new URL(basePath.endsWith('/') ? basePath : `${basePath}/`, 'http://vite.local')).pathname
   for (const name of ['three.module.js', 'three.core.js']) files.set(name, join(root, 'build', name))
   const walk = (directory: string, prefix: string) => {
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -22,10 +25,10 @@ function threeRuntime() {
     name: 'bundled-three-runtime',
     configureServer(server: import('vite').ViteDevServer) {
       server.middlewares.use((req, res, next) => {
-        const marker = '/vendor/three/0.180.0/'
         const url = (req.url ?? '').split('?')[0]
-        if (!url.startsWith(marker)) return next()
-        const path = files.get(url.slice(marker.length))
+        const requestMarker = url.startsWith(devMarker) ? devMarker : url.startsWith(marker) ? marker : undefined
+        if (!requestMarker) return next()
+        const path = files.get(url.slice(requestMarker.length))
         if (!path) { res.writeHead(404).end('Unknown Three.js module'); return }
         res.setHeader('Access-Control-Allow-Origin', '*')
         res.setHeader('Content-Type', path.endsWith('.js') ? 'text/javascript' : path.endsWith('.wasm') ? 'application/wasm' : 'application/octet-stream')
@@ -40,7 +43,10 @@ function threeRuntime() {
 
 function reactRuntime() {
   let runtime = ''
-  const url = '/vendor/react/19.3.1/runtime.js'
+  const assetPath = 'vendor/react/19.3.1/runtime.js'
+  const url = `/${assetPath}`
+  const basePath = process.env.BASE_PATH || '/'
+  const devUrl = new URL(assetPath, new URL(basePath.endsWith('/') ? basePath : `${basePath}/`, 'http://vite.local')).pathname
   const buildRuntime = async () => {
     if (!runtime) {
       const result = await bundle({
@@ -60,7 +66,8 @@ function reactRuntime() {
     name: 'bundled-react-runtime',
     async configureServer(server: import('vite').ViteDevServer) {
       server.middlewares.use(async (req, res, next) => {
-        if ((req.url ?? '').split('?')[0] !== url) return next()
+        const requestPath = new URL(req.url ?? '/', 'http://vite.local').pathname
+        if (requestPath !== url && requestPath !== devUrl) return next()
         try {
           res.setHeader('Access-Control-Allow-Origin', '*')
           res.setHeader('Content-Type', 'text/javascript')
@@ -71,7 +78,7 @@ function reactRuntime() {
       })
     },
     async generateBundle() {
-      this.emitFile({ type: 'asset', fileName: url.slice(1), source: await buildRuntime() })
+      this.emitFile({ type: 'asset', fileName: assetPath, source: await buildRuntime() })
       const license = readFileSync(join(import.meta.dirname, 'node_modules/react/LICENSE'), 'utf8')
       this.emitFile({ type: 'asset', fileName: 'vendor/react/19.3.1/LICENSE', source: license })
     },
