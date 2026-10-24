@@ -112,6 +112,8 @@ Supported types are `number` (with `min`, `max`, and optional `step`), `boolean`
 
 Typography studies expose their source text and available presets in **Parameters**. Original page controls and canvas-painted labels are hidden to keep one editing surface. Selecting a preset runs the source callback and synchronizes its resulting values back to the panel; parameter edits update the existing preview. The palette count also records source state that some original preset buttons do not reflect in their checkboxes.
 
+The Type Physics+ mechanism study is an independently implemented Canvas2D example based on traced public behavior: per-glyph spring physics, ellipse collisions, four canvas ratios, nine layouts, layered metaball contours, pointer throwing, held forces, and passive effects. Its text, canvas, typography, contour, physics, action, and pointer controls live in **Parameters**; its bundled `EVIDENCE.md` records the inspected source hash, formulas, deliberate omissions, and asset/licensing boundary.
+
 Canvas scenes can also sample a named project curve:
 
 ```ts

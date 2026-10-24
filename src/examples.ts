@@ -104,6 +104,22 @@ const existingExamples: Example[] = [
     viewport: '1440x900',
     source: 'spacetypegenerator.com/field',
   },
+  {
+    id: 'type-physics-study',
+    name: 'Type Physics+ mechanism study',
+    category: 'Typography',
+    renderer: 'Canvas2D / HTML project study',
+    description: 'A source-audited study of Type Physics+ per-glyph layouts, collisions, dragging, forces, and contour rendering.',
+    highlights: [
+      'Uses the confirmed nine layout formulas and one authoritative per-glyph physics state.',
+      'Exposes typography, collision, force, orbit, pointer, and passive-effect controls in Parameters.',
+      'No Type.Today source, fonts, audio, or branding assets are redistributed.',
+    ],
+    projectDirectory: 'type-physics-study',
+    viewport: '1440x900',
+    source: 'typephysics.type.today',
+    license: 'Clean-room mechanism study',
+  },
 ]
 
 const benchoExamples: Example[] = benchoCatalog.map((item) => ({

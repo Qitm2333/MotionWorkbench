@@ -67,7 +67,7 @@ test('Space Type studies expose the licensed source routes', async (context) => 
     return new Response(await readFile(new URL(`../public/${relative}`, import.meta.url)))
   })
   const studies = examples.filter((example) => example.category === 'Typography')
-  assert.equal(studies.length, 20)
+  assert.equal(studies.length, 21)
   assert.deepEqual(studies.slice(0, 2).map(({ id }) => id), ['space-type-cylinder', 'space-type-field'])
   assert.equal(studies.some(({ id }) => id === 'space-type-clutter'), false)
   assert.equal(studies.some(({ id }) => id === 'space-type-boost'), false)

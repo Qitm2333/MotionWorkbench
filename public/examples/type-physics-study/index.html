@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Type Physics mechanism study</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <svg class="filter-definitions" aria-hidden="true">
+      <defs>
+        <filter id="_lum2a" color-interpolation-filters="sRGB">
+          <feColorMatrix type="luminanceToAlpha" />
+        </filter>
+      </defs>
+    </svg>
+    <main id="stage">
+      <canvas id="physics" width="1920" height="1920" tabindex="0" aria-label="Interactive per-glyph physics study"></canvas>
+    </main>
+    <output id="diagnostics" hidden></output>
+    <script src="./src/main.js"></script>
+  </body>
+</html>

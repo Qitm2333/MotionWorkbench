@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { examples } from '../../src/examples.ts'
 
-const studies = examples.filter((example) => example.category === 'Typography' && !['space-type-cylinder', 'space-type-field'].includes(example.id))
+const studies = examples.filter((example) => example.category === 'Typography' && example.id.startsWith('space-type-') && !['space-type-cylinder', 'space-type-field'].includes(example.id))
 
 for (const study of studies) test(`${study.name}: source controls, strings and every preset`, async ({ page }) => {
   const errors: string[] = []

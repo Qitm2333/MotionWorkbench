@@ -1,0 +1,14 @@
+{
+  "formatVersion": 1,
+  "name": "Type Physics+ mechanism study",
+  "projectType": "html",
+  "entry": "index.html",
+  "renderer": { "type": "html" },
+  "sourceFiles": ["index.html", "style.css", "src/main.js"],
+  "assetFiles": ["EVIDENCE.md"],
+  "metadata": {
+    "source": "https://typephysics.type.today/",
+    "referenceRenderer": "Canvas2D per-glyph physics",
+    "licenseNote": "Clean implementation from observed public behavior. No Type.Today source, fonts, audio, or branding assets are redistributed; see EVIDENCE.md."
+  }
+}
