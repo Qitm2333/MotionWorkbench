@@ -136,3 +136,28 @@ test('Apple example loads every local resource with a deployment prefix and reta
   assert.ok(project.assets!['assets/scenes/iPhoneDuo_ROW_L_avif.lsd'])
   assert.ok(project.assets!['assets/scenes/iPhoneDuo_ROW_S_avif.lsd'])
 })
+
+test('Ice Works source port loads all editable source and attribution assets under a deployment prefix', async (context) => {
+  const requested = new Set<string>()
+  context.mock.method(globalThis, 'fetch', async (input: string) => {
+    requested.add(input)
+    assert.ok(input.startsWith('/MotionWorkbench/examples/ice-works-showcase/'))
+    const relative = input.slice('/MotionWorkbench/'.length)
+    try {
+      return new Response(await readFile(new URL(`../public/${relative}`, import.meta.url)))
+    } catch {
+      return new Response('', { status: 404 })
+    }
+  })
+
+  const project = await loadExampleProject('ice-works-showcase', '/MotionWorkbench/')
+  assert.equal(project.manifest.projectType, 'react')
+  assert.equal(project.manifest.renderer.type, 'react')
+  assert.equal(project.manifest.metadata?.sourceCommit, 'bed3534a43125f6ef93890c75854427ed6a261a1')
+  assert.equal(project.manifest.sourceFiles.length, 18)
+  assert.deepEqual(project.manifest.assetFiles, ['EVIDENCE.md', 'LICENSE.md', 'src/vendor/GSAP-README.md'])
+  assert.match(project.files['src/Carousel.jsx'], /mountWorkbenchControls/)
+  assert.match(project.files['src/shaders/planeShaders.js'], /smin/)
+  assert.ok(project.assets?.['LICENSE.md'])
+  assert.equal(requested.size, 22)
+})

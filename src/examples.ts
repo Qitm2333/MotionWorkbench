@@ -45,6 +45,22 @@ const existingExamples: Example[] = [
     viewport: '1024x768',
   },
   {
+    id: 'ice-works-showcase',
+    name: 'Ice Works showcase study',
+    category: 'Exploration',
+    renderer: 'Three.js / WebGL',
+    description: 'A source-level port of the Ice Works liquid ring carousel, including its SDF field, ASCII assembly, glass refraction, inertial input, and editable controls.',
+    highlights: [
+      'Explore 18 procedural project cards through the original full-screen GLSL liquid field.',
+      'Use wheel, angle-based drag, hover, and click-to-focus with the original GSAP timing.',
+      'Tune the source project\'s fit, ring, entry, glass, pointer, particle, and honey controls.',
+    ],
+    projectDirectory: 'ice-works-showcase',
+    viewport: '1440x900',
+    source: 'github.com/MegD1/Ice-works-showcase',
+    license: 'MIT source adaptation; GSAP Standard License dependency; see EVIDENCE.md',
+  },
+  {
     id: 'catalog-repro',
     name: 'Catalog motion study',
     category: 'Exploration',

@@ -1,0 +1,23 @@
+{
+  "formatVersion": 1,
+  "name": "Ice Works showcase study",
+  "projectType": "react",
+  "entry": "index.html",
+  "renderer": { "type": "react" },
+  "dependencies": { "react": "19.3.1", "three": "0.180.0" },
+  "sourceFiles": [
+    "index.html", "style.css", "src/main.jsx", "src/Carousel.jsx",
+    "src/parameters.js", "src/artwork.js", "src/ring/ascii.js",
+    "src/ring/atlas.js", "src/ring/gui.js", "src/ring/meta.js",
+    "src/ring/params.js", "src/ring/projects.js", "src/ring/splitText.js",
+    "src/ring/tag.js", "src/ring/utils.js", "src/shaders/planeShaders.js",
+    "src/shaders/textShaders.js", "src/vendor/gsap.js"
+  ],
+  "assetFiles": ["EVIDENCE.md", "LICENSE.md", "src/vendor/GSAP-README.md"],
+  "metadata": {
+    "source": "https://github.com/MegD1/Ice-works-showcase",
+    "referenceRenderer": "Next.js / React / Three.js / GLSL",
+    "sourceCommit": "bed3534a43125f6ef93890c75854427ed6a261a1",
+    "licenseNote": "Original MIT implementation adapted directly. Upstream Pinterest imagery and restricted fonts are replaced; bundled GSAP retains its own standard license. See EVIDENCE.md."
+  }
+}
