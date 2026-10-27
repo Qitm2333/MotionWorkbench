@@ -11,7 +11,7 @@ MotionWorkbench is a browser-based workspace for making and exploring small visu
 - Live parameter controls and an editable curve library with linear, easing, overshoot, and spring presets.
 - A resizable editor/preview layout, preview viewport and zoom controls, expanded preview, and dark/light themes.
 - Readable project folders, portable JSON import/export, and local draft recovery.
-- An **Examples** browser with Apple Duo, Catalog, and Canvas2D / HTML / Three.js starters; each opens as an editable copy and runs automatically.
+- An **Examples** browser with editable source studies, including Apple Duo, Catalog, Paper Wake, ASCII Goldfish, Paperbound, typography experiments, and Canvas2D / HTML / Three.js starters; each opens as an editable copy and runs automatically.
 
 ## Requirements
 
@@ -52,6 +52,8 @@ The **Catalog motion study** includes branching navigation, card expansion, and 
 Examples load as independent copies. **Save** chooses a new project folder, **Export** includes the complete editable source, and reopening an example starts from its bundled version. The repository keeps readable sources and a manifest under [`public/examples/`](./public/examples/); [`src/examples.ts`](./src/examples.ts) registers the gallery entries. Source files load from the same deployment, including GitHub Pages project paths.
 
 The **Apple Duo interaction study** includes a local Lotus runtime (which bundles its own Three.js implementation), seven product poses, a fold slider, and drag rotation. Its 327 runtime resources total approximately 38 MB; they load only when opening this example. The original runtime and provenance notes remain alongside the readable study adapter. This example retains its upstream engine instead of replacing it with the starter's Three.js version.
+
+The three **Ice** explorations preserve different implementation boundaries. **Ice Paper Wake** retains its MIT-licensed Three.js trail and paper shaders but replaces the upstream restricted photograph. **ASCII Goldfish Glass** retains the MIT Canvas2D simulation and adds synchronized Workbench controls. **Paperbound interaction study** ports the source bookshelf, material atlas, rounded binding, interior pages and staged GSAP transitions, with synchronized Workbench selection and motion controls. Paperbound's upstream commit does not specify a project license; its attribution and provenance are recorded without labeling it MIT. Each project includes an `EVIDENCE.md` ledger with the audited commit and adaptation boundary.
 
 The **Three.js model study** is also available under **New → Three.js**. It loads a small local glTF model with a separate BIN buffer, adds studio lighting and OrbitControls, and exposes seven motion, material, and lighting parameters. Imports use `three` and `three/addons/...`; no CDN connection is needed.
 

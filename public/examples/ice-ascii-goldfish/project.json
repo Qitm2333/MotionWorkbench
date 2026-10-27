@@ -1,0 +1,14 @@
+{
+  "formatVersion": 1,
+  "name": "ASCII Goldfish Glass",
+  "projectType": "html",
+  "entry": "index.html",
+  "renderer": { "type": "html" },
+  "sourceFiles": ["index.html", "workbench-parameters.js"],
+  "assetFiles": ["EVIDENCE.md", "LICENSE.md"],
+  "metadata": {
+    "source": "https://github.com/MegD1/Ice-ascii-goldfish",
+    "sourceCommit": "8917da362744c55d2a3bc5698401949b8c65f44b",
+    "licenseNote": "Original MIT implementation retained; Workbench adapter is additive."
+  }
+}

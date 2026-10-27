@@ -1,0 +1,15 @@
+{
+  "formatVersion": 1,
+  "name": "Paperbound interaction study",
+  "projectType": "react",
+  "entry": "index.html",
+  "renderer": { "type": "react" },
+  "dependencies": { "react": "19.3.1", "three": "0.180.0" },
+  "sourceFiles": ["index.html", "style.css", "src/main.jsx", "src/BookshelfScene.tsx", "src/BookBinding.ts", "src/content.ts", "src/useScene.js", "src/parameters.js", "src/vendor/gsap.js"],
+  "assetFiles": ["EVIDENCE.md", "textures/book-spines.webp", "src/vendor/GSAP-README.md"],
+  "metadata": {
+    "source": "https://github.com/MegD1/Ice-Paperbound",
+    "sourceCommit": "731a314e9b72f24bcb287aa4354fb1d9bb216df0",
+    "licenseNote": "Source adaptation of MegD1/Ice-Paperbound at the user's request. Upstream has no project-level license at the recorded commit; do not label it MIT. GSAP retains its separate standard-license notice. See EVIDENCE.md for provenance and changes."
+  }
+}

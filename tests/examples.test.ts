@@ -211,3 +211,41 @@ test('Ice Works source port loads all editable source and attribution assets und
   assert.ok(project.assets?.['LICENSE.md'])
   assert.equal(requested.size, 22)
 })
+
+test('MegD1 exploration studies load source, evidence and explicit licensing boundaries', async (context) => {
+  context.mock.method(globalThis, 'fetch', async (input: string) => {
+    const relative = input.slice('/MotionWorkbench/'.length)
+    try {
+      return new Response(await readFile(new URL(`../public/${relative}`, import.meta.url)))
+    } catch {
+      return new Response('', { status: 404 })
+    }
+  })
+
+  const wake = await loadExampleProject('ice-paper-wake', '/MotionWorkbench/')
+  assert.equal(wake.manifest.projectType, 'react')
+  assert.equal(wake.manifest.metadata?.sourceCommit, 'df31b761b68f9bc26d67c06d020357b7b07501cf')
+  assert.match(wake.files['src/gl/standalone.js'], /HalfFloatType/)
+  assert.match(wake.files['src/gl/standalone.js'], /BLUR_LEVELS = 4/)
+  assert.match(wake.files['src/parameters.js'], /label: 'Paper curl'/)
+  assert.match(wake.files['src/IcePaperWake.jsx'], /connectParameters\(wake\.config\)/)
+  assert.ok(wake.assets?.['assets/paper-study.svg'])
+  assert.ok(wake.assets?.['LICENSE.md'])
+
+  const goldfish = await loadExampleProject('ice-ascii-goldfish', '/MotionWorkbench/')
+  assert.equal(goldfish.manifest.projectType, 'html')
+  assert.equal(goldfish.manifest.metadata?.sourceCommit, '8917da362744c55d2a3bc5698401949b8c65f44b')
+  assert.match(goldfish.files['index.html'], /class Ct/)
+  assert.match(goldfish.files['index.html'], /glass-refraction/)
+  assert.match(goldfish.files['workbench-parameters.js'], /label: 'Fish count'/)
+  assert.ok(goldfish.assets?.['LICENSE.md'])
+
+  const paperbound = await loadExampleProject('ice-paperbound', '/MotionWorkbench/')
+  assert.equal(paperbound.manifest.projectType, 'react')
+  assert.equal(paperbound.manifest.metadata?.sourceCommit, '731a314e9b72f24bcb287aa4354fb1d9bb216df0')
+  assert.match(paperbound.files['src/BookshelfScene.tsx'], /OrthographicCamera/)
+  assert.match(paperbound.files['src/BookshelfScene.tsx'], /duration: 0\.85.*0\.5\)/)
+  assert.match(paperbound.files['src/BookBinding.ts'], /RoundedBoxGeometry/)
+  assert.ok(paperbound.assets?.['textures/book-spines.webp'])
+  assert.ok(paperbound.files['src/vendor/gsap.js'])
+})

@@ -1,0 +1,20 @@
+{
+  "formatVersion": 1,
+  "name": "Ice Paper Wake",
+  "projectType": "react",
+  "entry": "index.html",
+  "renderer": { "type": "react" },
+  "dependencies": { "react": "19.3.1", "three": "0.180.0" },
+  "sourceFiles": [
+    "index.html", "style.css", "src/main.jsx", "src/IcePaperWake.jsx",
+    "src/parameters.js", "src/gl/color.js", "src/gl/standalone.js",
+    "src/gl/trail.js", "src/gl/shaders/dither.js",
+    "src/gl/shaders/standalone.js", "src/gl/shaders/trail.js"
+  ],
+  "assetFiles": ["EVIDENCE.md", "LICENSE.md", "assets/paper-study.svg"],
+  "metadata": {
+    "source": "https://github.com/MegD1/Ice-paper-wake",
+    "sourceCommit": "df31b761b68f9bc26d67c06d020357b7b07501cf",
+    "licenseNote": "MIT source adaptation. The upstream restricted demo photograph is replaced by original vector artwork."
+  }
+}

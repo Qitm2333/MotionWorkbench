@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1000" viewBox="0 0 1200 1000">
+  <rect width="1200" height="1000" fill="#ded9cf"/>
+  <path d="M0 780 1200 520v480H0z" fill="#b9b2a6"/>
+  <circle cx="844" cy="280" r="190" fill="#e85236"/>
+  <path d="M180 670c105-250 280-370 510-360-102 114-157 248-165 402-137 7-252-7-345-42Z" fill="#22201e"/>
+  <path d="M125 835c246-72 526-77 840-15" fill="none" stroke="#f4efe7" stroke-width="32"/>
+  <text x="82" y="150" font-family="Arial, sans-serif" font-size="94" font-weight="700" fill="#22201e">PAPER / WAKE</text>
+  <text x="88" y="215" font-family="monospace" font-size="25" fill="#22201e">MOTION MATERIAL STUDY 01</text>
+</svg>
