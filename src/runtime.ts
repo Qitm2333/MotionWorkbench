@@ -5,6 +5,7 @@ import type { CurveResource, Project } from './project'
 import { initializeCompiler } from './compilerInitialization'
 import { opaqueOriginHistoryCompatibilityScript } from './historyCompatibility'
 import { prepareHtmlProject, previewBootstrap } from './htmlProject'
+import { deploymentAssetUrl } from './deployment'
 
 const vendorSources = new Map<string, Promise<string>>()
 const previewOwners = new WeakMap<HTMLIFrameElement, string>()
@@ -64,7 +65,7 @@ export async function compileProject(project: Project) {
           if (args.path === 'three' || args.path.startsWith('three/addons/')) {
             if (!project.manifest.dependencies?.three) return { errors: [{ text: 'Add dependencies.three: "0.180.0" to project.json or create a Three.js project' }] }
             const suffix = args.path === 'three' ? 'three.module.js' : `addons/${args.path.slice('three/addons/'.length)}`
-            return { path: new URL(`${import.meta.env.BASE_URL}vendor/three/0.180.0/${suffix}`, location.href).href, namespace: 'vendor' }
+            return { path: deploymentAssetUrl(`vendor/three/0.180.0/${suffix}`, import.meta.env.BASE_URL, location.href), namespace: 'vendor' }
           }
           if (args.namespace === 'vendor' && args.path.startsWith('.')) return { path: new URL(args.path, args.importer).href, namespace: 'vendor' }
           if (!args.path.startsWith('.')) return { errors: [{ text: `Only project-relative imports are supported: ${args.path}` }] }
@@ -352,8 +353,7 @@ export async function startHtmlPreview(frame: HTMLIFrameElement, project: Projec
   const prepared = await prepareHtmlProject(project, compileProject)
   html = prepared.html
   if (project.manifest.projectType === 'react') {
-    const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`
-    const runtimeUrl = new URL('vendor/react/19.3.1/runtime.js', new URL(baseUrl, location.href)).href
+    const runtimeUrl = deploymentAssetUrl('vendor/react/19.3.1/runtime.js', import.meta.env.BASE_URL, location.href)
     const runtimeSource = await loadReactRuntime(runtimeUrl)
     const safeSource = JSON.stringify(runtimeSource).replaceAll('<', '\\u003c')
     const runtimeScript = `<script>eval(${safeSource})</script>`

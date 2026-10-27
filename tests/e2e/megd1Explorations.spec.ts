@@ -28,6 +28,62 @@ async function colorRange(canvas) {
   })
 }
 
+async function pondFingerprint(pond) {
+  return pond.evaluate((element: HTMLCanvasElement) => {
+    const probe = document.createElement('canvas')
+    probe.width = 160
+    probe.height = 100
+    const context = probe.getContext('2d')!
+    context.drawImage(element, 0, 0, probe.width, probe.height)
+    const pixels = context.getImageData(0, 0, probe.width, probe.height).data
+    let hash = 2166136261
+    for (const value of pixels) hash = Math.imul(hash ^ value, 16777619)
+    return hash >>> 0
+  })
+}
+
+test('Goldfish swims immediately after opening, applying and resetting the sandbox', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  await page.goto('./')
+  const frame = await openExample(page, 'ASCII Goldfish Glass Exploration · Canvas2D / HTML')
+  const pond = frame.locator('#pond')
+  const expectSwimming = async () => {
+    await expect(pond).toBeVisible()
+    await expect(pond).toHaveAttribute('data-motion', 'running')
+    // Check visible pixels, not just a running flag or a scheduled callback.
+    for (let sample = 0; sample < 2; sample++) {
+      await page.waitForTimeout(300)
+      const before = await pondFingerprint(pond)
+      await expect.poll(() => pondFingerprint(pond), { timeout: 2000 }).not.toBe(before)
+    }
+  }
+  await expectSwimming()
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await page.getByTitle('Reset simulation', { exact: true }).click()
+    await expectSwimming()
+  }
+  await page.getByRole('button', { name: /Apply/ }).click()
+  await expectSwimming()
+  await page.getByRole('combobox', { name: 'Preview zoom', exact: true }).selectOption('50')
+  await expectSwimming()
+  await page.getByRole('button', { name: 'Expand preview', exact: true }).click()
+  await expectSwimming()
+  await page.getByRole('button', { name: 'Exit expanded preview', exact: true }).click()
+  await page.getByTitle('Pause', { exact: true }).click()
+  // Allow the parent pause message to cross the sandbox boundary.
+  await page.waitForTimeout(150)
+  const paused = await pondFingerprint(pond)
+  await page.waitForTimeout(250)
+  expect(await pondFingerprint(pond)).toBe(paused)
+  await page.getByTitle('Resume', { exact: true }).click()
+  await expectSwimming()
+  await openExample(page, 'Motion postcard Starter · HTML / CSS / JS')
+  await openExample(page, 'ASCII Goldfish Glass Exploration · Canvas2D / HTML')
+  await expectSwimming()
+  expect(errors).toEqual([])
+})
+
 test('Paper Wake, ASCII Goldfish and Paperbound run as editable parameterized examples', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(error.message))

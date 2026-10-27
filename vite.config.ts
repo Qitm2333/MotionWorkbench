@@ -4,14 +4,16 @@ import type { Plugin } from 'vite'
 import { build as bundle } from 'esbuild'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { deploymentBase } from './src/deployment.ts'
+
+const basePath = deploymentBase(process.env.BASE_PATH || '/')
 
 // Keep the pinned runtime and addons local in both dev and Pages builds.
 function threeRuntime() {
   const files = new Map<string, string>()
   const root = join(import.meta.dirname, 'node_modules/three')
   const marker = '/vendor/three/0.180.0/'
-  const basePath = process.env.BASE_PATH || '/'
-  const devMarker = new URL(marker.slice(1), new URL(basePath.endsWith('/') ? basePath : `${basePath}/`, 'http://vite.local')).pathname
+  const devMarker = new URL(marker.slice(1), new URL(basePath, 'http://vite.local')).pathname
   for (const name of ['three.module.js', 'three.core.js']) files.set(name, join(root, 'build', name))
   const walk = (directory: string, prefix: string) => {
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -45,8 +47,7 @@ function reactRuntime() {
   let runtime = ''
   const assetPath = 'vendor/react/19.3.1/runtime.js'
   const url = `/${assetPath}`
-  const basePath = process.env.BASE_PATH || '/'
-  const devUrl = new URL(assetPath, new URL(basePath.endsWith('/') ? basePath : `${basePath}/`, 'http://vite.local')).pathname
+  const devUrl = new URL(assetPath, new URL(basePath, 'http://vite.local')).pathname
   const buildRuntime = async () => {
     if (!runtime) {
       const result = await bundle({
@@ -90,5 +91,5 @@ export default defineConfig({
   plugins: [react(), threeRuntime(), reactRuntime()],
   preview: { headers: { 'Access-Control-Allow-Origin': '*' } },
   // GitHub Pages serves project sites below /<repository>/; local dev stays at `/`.
-  base: process.env.BASE_PATH || '/',
+  base: basePath,
 })
