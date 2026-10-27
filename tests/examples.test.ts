@@ -59,6 +59,35 @@ test('catalog loads complete local source under a Pages deployment prefix', asyn
   assert.equal(requested.length, 4)
 })
 
+test('Text to image letters loads its source, license, evidence and every project-relative image', async (context) => {
+  const requested: string[] = []
+  context.mock.method(globalThis, 'fetch', async (input: string) => {
+    requested.push(input)
+    assert.ok(input.startsWith('/MotionWorkbench/examples/text-image-letters/'))
+    const relative = input.slice('/MotionWorkbench/'.length)
+    return new Response(await readFile(new URL(`../public/${relative}`, import.meta.url)))
+  })
+
+  const example = examples.find(({ id }) => id === 'text-image-letters')
+  assert.ok(example)
+  assert.equal(example.category, 'Exploration')
+  assert.equal(example.source, 'github.com/boknowsworld/boknows-text-image-template')
+  const project = await loadExampleProject(example.id, '/MotionWorkbench/')
+  assert.equal(project.manifest.projectType, 'html')
+  assert.equal(project.manifest.metadata?.license, 'MIT')
+  assert.equal(project.manifest.metadata?.sourceCommit, '72bc384dd1fbeb007d7ffdec8f4e7218a59338be6')
+  assert.deepEqual(Object.keys(project.files).sort(), ['app.js', 'config.js', 'index.html', 'scripts/validate.mjs', 'style.css'])
+  assert.equal(Object.keys(project.assets ?? {}).filter((path) => path.endsWith('.webp')).length, 22)
+  assert.equal(Object.keys(project.assets ?? {}).length, 27)
+  assert.ok(project.assets?.['LICENSE.md'])
+  assert.ok(project.assets?.['EVIDENCE.md'])
+  assert.ok(project.assets?.['docs/MATERIALS.md'])
+  assert.match(project.files['app.js'], /maxActiveLetters/)
+  assert.match(project.files['app.js'], /automaticPlayback/)
+  assert.match(project.files['style.css'], /editorial-hero/)
+  assert.ok(requested.some((url) => url.endsWith('/assets/10-d-b.webp')))
+})
+
 test('Space Type studies expose the licensed source routes', async (context) => {
   context.mock.method(globalThis, 'fetch', async (input: string) => {
     const prefix = '/MotionWorkbench/examples/space-type-'
@@ -67,7 +96,7 @@ test('Space Type studies expose the licensed source routes', async (context) => 
     return new Response(await readFile(new URL(`../public/${relative}`, import.meta.url)))
   })
   const studies = examples.filter((example) => example.category === 'Typography')
-  assert.equal(studies.length, 21)
+  assert.equal(studies.length, 22)
   assert.deepEqual(studies.slice(0, 2).map(({ id }) => id), ['space-type-cylinder', 'space-type-field'])
   assert.equal(studies.some(({ id }) => id === 'space-type-clutter'), false)
   assert.equal(studies.some(({ id }) => id === 'space-type-boost'), false)
@@ -105,6 +134,27 @@ test('Space Type studies expose the licensed source routes', async (context) => 
   assert.match(field.files['src/main.js'], /drawSourceGlyph/)
   assert.match(field.files['src/keyboardEngine_190103.js'], /function keyboardEngine/)
   assert.match(field.files['src/glyph-adapter.js'], /drawSourceGlyph/)
+})
+
+test('DEMO Festival study loads its readable shader pipeline and four local glyph textures', async (context) => {
+  const requested: string[] = []
+  context.mock.method(globalThis, 'fetch', async (input: string) => {
+    requested.push(input)
+    assert.ok(input.startsWith('/MotionWorkbench/examples/demo-festival/'))
+    const relative = input.slice('/MotionWorkbench/'.length)
+    return new Response(await readFile(new URL(`../public/${relative}`, import.meta.url)))
+  })
+  const project = await loadExampleProject('demo-festival-motion', '/MotionWorkbench/')
+  assert.equal(project.manifest.name, 'DEMO Festival letter motion')
+  assert.equal(project.manifest.projectType, 'html')
+  assert.deepEqual(Object.keys(project.files).sort(), ['index.html', 'src/main.js', 'src/motion.js', 'src/renderer.js', 'style.css'])
+  assert.equal(Object.keys(project.assets ?? {}).filter((path) => path.endsWith('.webp')).length, 4)
+  assert.ok(project.assets?.['EVIDENCE.md'])
+  assert.match(project.files['src/motion.js'], /sampleCablesSpline/)
+  assert.match(project.files['src/renderer.js'], /FXAA_REDUCE|reduce = max/)
+  assert.match(project.files['src/renderer.js'], /1\.5 - uMidpoint/)
+  assert.match(project.files['src/main.js'], /label: 'Idle delay', default: 2\.9/)
+  assert.ok(requested.some((url) => url.endsWith('/assets/o.webp')))
 })
 
 test('example loading reports missing files and rejects unsafe manifests before fetching source', async (context) => {

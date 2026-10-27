@@ -1,0 +1,14 @@
+{
+  "formatVersion": 1,
+  "name": "DEMO Festival letter motion",
+  "projectType": "html",
+  "entry": "index.html",
+  "renderer": { "type": "html" },
+  "sourceFiles": ["index.html", "style.css", "src/motion.js", "src/renderer.js", "src/main.js"],
+  "assetFiles": ["assets/d.webp", "assets/e.webp", "assets/m.webp", "assets/o.webp", "EVIDENCE.md"],
+  "metadata": {
+    "source": "https://demofestival.com/",
+    "referenceRenderer": "Cables.gl / WebGL",
+    "licenseNote": "Source-study implementation. Original DEMO glyph artwork remains credited to Demo Festival / Studio Dumbar; see EVIDENCE.md."
+  }
+}

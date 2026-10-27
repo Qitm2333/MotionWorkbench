@@ -1,0 +1,43 @@
+{
+  "formatVersion": 1,
+  "name": "Text to image letters",
+  "projectType": "html",
+  "entry": "index.html",
+  "renderer": { "type": "html" },
+  "sourceFiles": ["index.html", "style.css", "config.js", "app.js", "scripts/validate.mjs"],
+  "assetFiles": [
+    "README.md",
+    "LICENSE.md",
+    "EVIDENCE.md",
+    "docs/MATERIALS.md",
+    "docs/materials.json",
+    "assets/00-b-a.webp",
+    "assets/00-b-b.webp",
+    "assets/01-o-a.webp",
+    "assets/01-o-b.webp",
+    "assets/02-k-a.webp",
+    "assets/02-k-b.webp",
+    "assets/03-n-a.webp",
+    "assets/03-n-b.webp",
+    "assets/04-o-a.webp",
+    "assets/04-o-b.webp",
+    "assets/05-w-a.webp",
+    "assets/05-w-b.webp",
+    "assets/06-s-a.webp",
+    "assets/06-s-b.webp",
+    "assets/07-w-a.webp",
+    "assets/07-w-b.webp",
+    "assets/08-o-a.webp",
+    "assets/08-o-b.webp",
+    "assets/09-r-a.webp",
+    "assets/09-r-b.webp",
+    "assets/10-d-a.webp",
+    "assets/10-d-b.webp"
+  ],
+  "metadata": {
+    "source": "https://github.com/boknowsworld/boknows-text-image-template",
+    "sourceCommit": "72bc384dd1fbeb007d7ffdec8f4e7218a59338be6",
+    "license": "MIT",
+    "licenseNote": "MIT-licensed HTML/CSS/JS and included generated WebP examples. Upstream license and asset-generation notes are included; see EVIDENCE.md."
+  }
+}

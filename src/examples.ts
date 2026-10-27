@@ -75,6 +75,22 @@ const existingExamples: Example[] = [
     viewport: '1440x900',
   },
   {
+    id: 'text-image-letters',
+    name: 'Text to image letters',
+    category: 'Exploration',
+    renderer: 'HTML / CSS / JS',
+    description: 'A source-led, no-dependency typography study where individual letters reveal position-specific image variations on hover, touch, and automatic playback.',
+    highlights: [
+      'Hover or touch each letter to reveal one of its locally bundled image variations.',
+      'Tune entry/exit timing, simultaneous image count, and automatic playback in Parameters.',
+      'Includes the upstream MIT license, asset-generation guide, and prompt ledger.',
+    ],
+    projectDirectory: 'text-image-letters',
+    viewport: '1440x900',
+    source: 'github.com/boknowsworld/boknows-text-image-template',
+    license: 'MIT',
+  },
+  {
     id: 'orbit-study',
     name: 'Orbit study',
     category: 'Starter',
@@ -135,6 +151,22 @@ const existingExamples: Example[] = [
     viewport: '1440x900',
     source: 'typephysics.type.today',
     license: 'Clean-room mechanism study',
+  },
+  {
+    id: 'demo-festival-motion',
+    name: 'DEMO Festival letter motion',
+    category: 'Typography',
+    renderer: 'WebGL / HTML project study',
+    description: 'A source-audited reconstruction of DEMO Festival\'s four-glyph hero, with the traced Cables timelines, texture deformation, idle performance, and post-processing.',
+    highlights: [
+      'Uses the four source glyph textures and the traced two-stage cubic-Bezier UV deformation pipeline.',
+      'Preserves the intro, pointer smoothing, independent quadrant timelines, inactivity trigger, Levels, and FXAA passes.',
+      'Tune motion, pointer response, layout gaps, levels, colors, and rendering from Parameters.',
+    ],
+    projectDirectory: 'demo-festival',
+    viewport: '1440x900',
+    source: 'demofestival.com',
+    license: 'Source-study implementation; glyph artwork attribution and evidence in EVIDENCE.md',
   },
 ]
 
