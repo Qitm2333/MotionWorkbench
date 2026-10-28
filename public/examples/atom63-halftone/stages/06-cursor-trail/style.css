@@ -1,0 +1,8 @@
+* { box-sizing: border-box; }
+html, body { width: 100%; height: 100%; margin: 0; }
+body { display: grid; place-items: center; overflow: hidden; color: #fff; background: #1c1c1c; }
+.study-shell { position: relative; width: min(100vw, 100vh); height: min(100vw, 100vh); overflow: hidden; background: #1c1c1c; }
+canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.study-actions { position: absolute; top: 12px; right: 12px; display: flex; gap: 6px; }
+.study-actions button { padding: 5px 8px; border: 1px solid rgba(255,255,255,.2); border-radius: 3px; color: rgba(255,255,255,.78); background: rgba(0,0,0,.32); font: 10px/1.2 Consolas, monospace; cursor: pointer; }
+.study-actions button:hover, .study-actions button:focus-visible { border-color: rgba(255,255,255,.55); color: #fff; outline: none; }

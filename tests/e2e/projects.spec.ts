@@ -27,6 +27,68 @@ test('Examples browser filters the catalog and keeps the active result in sync',
   await expect(dialog.getByRole('button', { name: /Open example/ })).toBeDisabled()
 })
 
+test('ATOM63 Connected Panel iterations live in History and preview the selected baseline', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  await page.goto('./')
+  await page.getByTitle('Browse examples').click()
+  const dialog = page.getByRole('dialog', { name: 'Examples', exact: true })
+  await dialog.getByRole('button', { name: 'Design Engineering', exact: true }).click()
+  await dialog.getByRole('button', { name: /Connected Panel/ }).click()
+  await dialog.getByRole('button', { name: 'Open example' }).click()
+  await expect(dialog).not.toBeVisible()
+  const graph = page.getByLabel('Project history mind map')
+  await expect(graph.locator('.history-graph-node')).toHaveCount(3)
+  await expect(graph.getByRole('button', { name: /Connect the surface/ })).toBeVisible()
+  await expect(page.locator('.statusbar')).toContainText('Running')
+  const frame = page.frameLocator('iframe[title="Project preview"]')
+  await expect(frame.locator('#panel')).toHaveCSS('transition-timing-function', 'cubic-bezier(0.2, 0, 0, 1), cubic-bezier(0.2, 0, 0, 1)')
+  await frame.locator('#trigger').click()
+  await expect(frame.locator('#panel')).toHaveCSS('width', '260px')
+  await expect(frame.locator('.content-inner')).toHaveCSS('opacity', '1')
+  await expect(frame.locator('.content-inner')).toContainText('Adjust display and layout preferences.')
+  await expect(frame.locator('.content-inner')).toContainText('Motion')
+  await expect(frame.locator('.content-inner')).toContainText('Full')
+  await expect(frame.locator('#content')).toHaveCSS('height', /1\d\dpx/)
+
+  await graph.getByRole('button', { name: /Connect the surface/ }).click()
+  await expect(frame.locator('.scene')).toHaveAttribute('data-stage', '1')
+  await expect(frame.locator('#panel')).toHaveCSS('transition-timing-function', 'linear, linear')
+  await graph.getByRole('button', { name: /Stabilize the content/ }).click()
+  await expect(frame.locator('.scene')).toHaveAttribute('data-stage', '2')
+  await expect(frame.locator('#panel')).toHaveCSS('transition-timing-function', 'cubic-bezier(0.2, 0, 0, 1), cubic-bezier(0.2, 0, 0, 1)')
+  await graph.getByRole('button', { name: /Connect the surface/ }).click()
+  page.once('dialog', (confirm) => confirm.accept())
+  await page.getByRole('button', { name: 'Restore', exact: true }).click()
+  await expect(preview(page).locator('.scene')).toHaveAttribute('data-stage', '1')
+  await expect(graph).not.toBeVisible()
+  await expect(page.getByRole('button', { name: 'style.css', exact: true })).toBeVisible()
+  expect(errors).toEqual([])
+})
+
+test('ATOM63 Halftone opens the full effect with cumulative iterations in History', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  await page.goto('./')
+  await page.getByTitle('Browse examples').click()
+  const dialog = page.getByRole('dialog', { name: 'Examples', exact: true })
+  await dialog.getByRole('button', { name: 'Design Engineering', exact: true }).click()
+  await dialog.getByRole('button', { name: /Antimetal Halftone/ }).click()
+
+  await dialog.getByRole('button', { name: 'Open example' }).click()
+
+  const canvas = preview(page).locator('#halftone')
+  await expect(canvas).toBeVisible()
+  await expect(page.getByLabel('Project history mind map').locator('.history-graph-node')).toHaveCount(6)
+  await expect(page.getByLabel('Project history mind map').getByRole('button', { name: /Core disc/ })).toBeVisible()
+  await expect(page.locator('.parameter-count')).not.toHaveText('0')
+  await expect.poll(() => canvas.evaluate((element) => (element as HTMLCanvasElement).width > 0)).toBe(true)
+  await page.getByLabel('Project history mind map').getByRole('button', { name: /Core disc/ }).click()
+  await expect(preview(page).locator('body')).toHaveAttribute('data-stage', '1')
+  await expect(canvas).toBeVisible()
+  expect(errors).toEqual([])
+})
+
 test('Space Type Cylinder exposes source controls and renders an editable study', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(error.message))

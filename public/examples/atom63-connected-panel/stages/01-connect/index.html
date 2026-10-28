@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Connected Panel</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main class="scene" data-stage="1">
+    <section class="panel" id="panel" aria-label="Connected panel">
+      <button class="trigger" id="trigger" type="button" aria-expanded="false" aria-controls="content">
+        <svg class="trigger-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h6M14 7h6M4 17h6M14 17h6M10 5v4m4 6v4" /></svg><span class="trigger-label"><span>Display</span><span class="separator">/</span><span>Default</span></span><svg class="chevron" aria-hidden="true" viewBox="0 0 24 24"><path d="m7 10 5 5 5-5" /></svg>
+      </button>
+      <div class="content" id="content" aria-hidden="true" inert>
+        <div class="content-inner"><header><strong>Display settings</strong><p>Adjust display and layout preferences.</p></header><div class="settings"><div><span>Layout</span><strong>Centered</strong></div><div><span>Density</span><strong>Comfortable</strong></div><div><span>Theme</span><strong>System</strong></div><div><span>Motion</span><strong>Full</strong></div></div></div>
+      </div>
+    </section>
+  </main>
+  <script src="./src/main.js"></script>
+</body>
+</html>

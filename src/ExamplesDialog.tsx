@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { ArrowRight, LoaderCircle, Search, X } from 'lucide-react'
-import { examples, loadExampleProject } from './examples'
+import { examples, loadExampleProjectWithHistory } from './examples'
 import type { Project } from './project'
+import type { ProjectHistory } from './projectHistory'
 
 type Props = {
   hasUnsavedChanges: boolean
   onClose: () => void
-  onOpen: (project: Project, viewport?: string) => void
+  onOpen: (project: Project, viewport?: string, history?: ProjectHistory) => void
 }
 
 export function ExamplesDialog({ hasUnsavedChanges, onClose, onOpen }: Props) {
@@ -25,7 +26,6 @@ export function ExamplesDialog({ hasUnsavedChanges, onClose, onOpen }: Props) {
     return matchesCategory && (!normalizedQuery || searchable.includes(normalizedQuery))
   })
   const selected = filteredExamples.find((example) => example.id === selectedId) ?? filteredExamples[0]
-
   useEffect(() => {
     const dialog = dialogRef.current!
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
@@ -45,8 +45,8 @@ export function ExamplesDialog({ hasUnsavedChanges, onClose, onOpen }: Props) {
     setLoading(true)
     setError('')
     try {
-      const project = await loadExampleProject(selected.id, import.meta.env.BASE_URL, request.signal)
-      if (!request.signal.aborted) onOpen(project, selected.viewport)
+      const result = await loadExampleProjectWithHistory(selected.id, import.meta.env.BASE_URL, request.signal)
+      if (!request.signal.aborted) onOpen(result.project, selected.viewport, result.history)
     } catch (cause) {
       if (!request.signal.aborted) setError(cause instanceof Error ? cause.message : String(cause))
     } finally {
@@ -83,11 +83,11 @@ export function ExamplesDialog({ hasUnsavedChanges, onClose, onOpen }: Props) {
             <h3 id="example-name">{selected.name}</h3>
             <p>{selected.description}</p>
             <ul>{selected.highlights.map((highlight) => <li key={highlight}>{highlight}</li>)}</ul>
-            <p className="example-copy-note">Loads all source files into Explorer and applies automatically. The bundled original stays available for a fresh start.</p>
+            <p className="example-copy-note">Loads the complete editable project into Explorer and applies it. Any documented iteration snapshots are stored in the project History.</p>
           </section> : <section className="example-details examples-no-selection"><p>No examples match this search.</p></section>}
         </div>
         <footer className="examples-footer">
-          <p>{hasUnsavedChanges ? 'Your workspace has unsaved changes. Save or export them before replacing it.' : 'The example opens as a new project copy. Save to choose its folder.'}</p>
+          <p>{hasUnsavedChanges ? 'Your workspace has unsaved changes. Save or export them before replacing it.' : 'The example opens as a new editable project copy. Save to choose its folder.'}</p>
           {error && <p className="example-error" role="alert">{error}</p>}
           <button className="tool-button primary-action" disabled={loading || !selected} onClick={() => void openSelected()}>
             {loading ? <LoaderCircle size={14} className="example-loading" /> : <ArrowRight size={14} />}

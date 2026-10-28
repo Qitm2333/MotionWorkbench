@@ -2,6 +2,8 @@ import { starterHtmlProject, starterProject, validateProject } from './project.t
 import type { Project, ProjectManifest } from './project.ts'
 import { assetMime, encodeAsset } from './assets.ts'
 import { starterThreeProject } from './threeProject.ts'
+import { createProjectHistoryFromStages } from './projectHistory.ts'
+import type { ProjectHistory } from './projectHistory.ts'
 import benchoCatalog from './benchoExamples.json' with { type: 'json' }
 
 export type Example = {
@@ -17,9 +19,60 @@ export type Example = {
   compatibility?: string
   source?: string
   license?: string
+  stages?: ExampleStage[]
+}
+
+export type ExampleStage = {
+  id: string
+  name: string
+  summary: string
+  directory: string
 }
 
 const existingExamples: Example[] = [
+  {
+    id: 'atom63-connected-panel',
+    name: 'Connected Panel',
+    category: 'Design Engineering',
+    renderer: 'HTML / CSS · History study',
+    description: 'An editable reconstruction of Connected Panel. Its three published build steps are available as snapshots on the project History main line.',
+    highlights: [
+      'The project opens at the final iteration with all earlier code snapshots in History.',
+      'The snapshots follow the three steps documented in the article; they are not original author commits.',
+    ],
+    projectDirectory: 'atom63-connected-panel',
+    viewport: '900x600',
+    source: 'atom63.io/writing/connected-panel',
+    stages: [
+      { id: 'connect', name: 'Connect the surface', summary: 'Bring the trigger and panel into one surface; the shell grows from 172px to 260px.', directory: 'stages/01-connect' },
+      { id: 'stabilize', name: 'Stabilize the content', summary: 'Constrain the flex content with min-width: 0 and a 258px content width inside the clipped shell.', directory: 'stages/02-stabilize' },
+      { id: 'reveal', name: 'Polish the reveal', summary: 'Reveal with opacity, 2px blur and scale; the article specifies a 0.32s duration and separate easing curves.', directory: 'stages/03-reveal' },
+    ],
+  },
+  {
+    id: 'atom63-halftone',
+    name: 'Antimetal Halftone',
+    category: 'Design Engineering',
+    renderer: 'Canvas2D · History study',
+    description: 'An editable Canvas2D study of the Antimetal halftone. Its six documented construction steps are available as snapshots on the project History main line.',
+    highlights: [
+      'The project opens at the complete effect; earlier construction steps are available in History.',
+      'The article documents the layer order, not six historical source snapshots.',
+      'Parameters are defined by the project and remain editable in Workbench.',
+    ],
+    projectDirectory: 'atom63-halftone',
+    viewport: '1440x900',
+    source: 'atom63.io/writing/halftone',
+    license: 'Source-study implementation; no Antimetal assets or ATOM63 branding redistributed',
+    stages: [
+      { id: 'core', name: 'Core disc', summary: 'Start with a breathing core sampled across a hex-offset Canvas2D dot grid.', directory: 'stages/01-core' },
+      { id: 'ring-1', name: 'Ring 1', summary: 'Add the first angle-modulated ring around the core.', directory: 'stages/02-ring-1' },
+      { id: 'ring-2', name: 'Ring 2', summary: 'Add the second ring with a separate angular wave and radius.', directory: 'stages/03-ring-2' },
+      { id: 'cells', name: 'Cells', summary: 'Add moving Gaussian cells as independent amplitude sources.', directory: 'stages/04-cells' },
+      { id: 'shapes', name: 'Shapes', summary: 'Blend soft square and circular distance fields into the dot field.', directory: 'stages/05-shapes' },
+      { id: 'cursor-trail', name: 'Cursor trail', summary: 'Finish with a time-decaying pointer trail; the full source exposes replay and reset actions.', directory: 'stages/06-cursor-trail' },
+    ],
+  },
   {
     id: 'apple-duo-study',
     name: 'Apple Duo interaction study',
@@ -258,6 +311,26 @@ const importedSpaceTypeExamples: Example[] = spaceTypeRoutes.map(([route, name])
 
 export const examples: Example[] = [...existingExamples, ...importedSpaceTypeExamples, ...benchoExamples]
 
+export async function loadExampleStageProject(id: string, stageId: string, baseUrl: string, signal?: AbortSignal): Promise<Project> {
+  const example = examples.find((item) => item.id === id)
+  const stage = example?.stages?.find((item) => item.id === stageId)
+  if (!example?.projectDirectory || !stage) throw new Error('Unknown example stage')
+  return loadProjectFromRoot(`${baseUrl.replace(/\/?$/, '/')}examples/${example.projectDirectory}/${stage.directory}/`, signal)
+}
+
+export async function loadExampleProjectWithHistory(id: string, baseUrl: string, signal?: AbortSignal): Promise<{ project: Project; history?: ProjectHistory }> {
+  const example = examples.find((item) => item.id === id)
+  if (!example) throw new Error('Unknown example')
+  if (!example.stages?.length) return { project: await loadExampleProject(id, baseUrl, signal) }
+  const stages = await Promise.all(example.stages.map(async (stage, index) => ({
+    label: stage.name,
+    project: index === example.stages!.length - 1
+      ? await loadExampleProject(id, baseUrl, signal)
+      : await loadExampleStageProject(id, stage.id, baseUrl, signal),
+  })))
+  return createProjectHistoryFromStages(stages)
+}
+
 /** Load a fresh editable copy. baseUrl includes the Vite/Pages deployment prefix. */
 export async function loadExampleProject(id: string, baseUrl: string, signal?: AbortSignal): Promise<Project> {
   const example = examples.find((item) => item.id === id)
@@ -268,6 +341,10 @@ export async function loadExampleProject(id: string, baseUrl: string, signal?: A
   if (!example.projectDirectory) throw new Error('Example source is unavailable')
 
   const root = `${baseUrl.replace(/\/?$/, '/')}examples/${example.projectDirectory}/`
+  return loadProjectFromRoot(root, signal, example.assetManifest)
+}
+
+async function loadProjectFromRoot(root: string, signal?: AbortSignal, assetManifest?: string): Promise<Project> {
   const responseFor = async (path: string) => {
     const response = await fetch(`${root}${path}`, { signal })
     if (!response.ok) throw new Error(`Could not load example file: ${path} (${response.status})`)
@@ -279,10 +356,10 @@ export async function loadExampleProject(id: string, baseUrl: string, signal?: A
   }
   // Validate all manifest paths before fetching any source file.
   let assetFiles = manifest.assetFiles ?? []
-  if (example.assetManifest) {
-    const catalog = JSON.parse(await (await responseFor(example.assetManifest)).text()) as { assets?: Array<{ file?: unknown }> }
+  if (assetManifest) {
+    const catalog = JSON.parse(await (await responseFor(assetManifest)).text()) as { assets?: Array<{ file?: unknown }> }
     if (!Array.isArray(catalog.assets) || catalog.assets.some((asset) => typeof asset?.file !== 'string')) throw new Error('Example asset manifest is invalid')
-    assetFiles = [...catalog.assets.map((asset) => asset.file as string), 'EVIDENCE.md', example.assetManifest]
+    assetFiles = [...catalog.assets.map((asset) => asset.file as string), 'EVIDENCE.md', assetManifest]
   }
   const skeleton = validateProject({
     manifest: { ...manifest, assetFiles },

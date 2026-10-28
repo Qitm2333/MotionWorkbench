@@ -942,7 +942,17 @@ function App() {
     setNewProjectOpen(false)
   }
 
-  const openExample = (exampleProject: Project, viewport?: string) => {
+  const openExample = async (exampleProject: Project, viewport?: string, initialHistory?: ProjectHistory) => {
+    if (initialHistory) {
+      await saveProjectHistory(initialHistory)
+      setHistoryRecord({ projectId: initialHistory.projectId, history: initialHistory })
+      setSelectedSnapshotId(initialHistory.snapshots.at(-1)?.id ?? null)
+      setHistoryOpen(true)
+    } else {
+      setHistoryRecord(null)
+      setSelectedSnapshotId(null)
+      setHistoryOpen(false)
+    }
     loadProjectCopy(exampleProject)
     setPreviewZoom('fit')
     setHtmlViewport(viewport ?? 'responsive')

@@ -25,6 +25,42 @@ export type ProjectHistory = {
   updatedAt: number
 }
 
+export function createProjectHistoryFromStages(stages: Array<{ project: Project; label: string }>) {
+  if (!stages.length) throw new Error('Project history needs at least one stage')
+  const projectId = crypto.randomUUID()
+  const branchId = crypto.randomUUID()
+  const now = Date.now()
+  let previousId: string | null = null
+  const snapshots = stages.map(({ project: source, label }) => {
+    const id = crypto.randomUUID()
+    const snapshot = {
+      id,
+      parentId: previousId,
+      branchId,
+      label,
+      // Imported article stages are not dated commits; they share the import time.
+      createdAt: now,
+      project: {
+        ...source,
+        manifest: { ...source.manifest, historyId: projectId },
+        files: { ...source.files },
+        ...(source.assets ? { assets: { ...source.assets } } : {}),
+      },
+    }
+    previousId = id
+    return snapshot
+  })
+  const head = snapshots[snapshots.length - 1]
+  const history: ProjectHistory = {
+    projectId,
+    branches: [{ id: branchId, name: 'main', createdAt: now, baseSnapshotId: null, headSnapshotId: head.id }],
+    snapshots,
+    activeBranchId: branchId,
+    updatedAt: now,
+  }
+  return { history, project: head.project }
+}
+
 export type HistoryGraphNode = {
   snapshot: ProjectSnapshot
   branchName: string

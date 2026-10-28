@@ -1,0 +1,9 @@
+{
+  "formatVersion": 1,
+  "name": "ATOM63 / Antimetal Halftone Study",
+  "projectType": "html",
+  "entry": "index.html",
+  "renderer": { "type": "html" },
+  "sourceFiles": ["index.html", "style.css", "src/main.js"],
+  "assetFiles": ["EVIDENCE.md"]
+}

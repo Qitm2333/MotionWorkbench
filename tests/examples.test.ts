@@ -1,7 +1,92 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
-import { examples, loadExampleProject } from '../src/examples.ts'
+import { examples, loadExampleProject, loadExampleProjectWithHistory, loadExampleStageProject } from '../src/examples.ts'
+
+test('ATOM63 Connected Panel stores its published construction steps as a History main line', async (context) => {
+  const paths: string[] = []
+  context.mock.method(globalThis, 'fetch', async (input: string) => {
+    paths.push(input)
+    const relative = input.slice('/MotionWorkbench/'.length)
+    return new Response(await readFile(new URL(`../public/${relative}`, import.meta.url)))
+  })
+
+  const example = examples.find(({ id }) => id === 'atom63-connected-panel')
+  assert.ok(example)
+  assert.equal(example.category, 'Design Engineering')
+  assert.equal(example.stages?.length, 3)
+  assert.equal(example.source, 'atom63.io/writing/connected-panel')
+  const { project, history } = await loadExampleProjectWithHistory(example.id, '/MotionWorkbench/')
+  assert.ok(history)
+  assert.equal(history.snapshots.length, 3)
+  assert.equal(history.branches.length, 1)
+  assert.equal(history.branches[0].name, 'main')
+  assert.deepEqual(history.snapshots.map(({ label }) => label), example.stages?.map(({ name }) => name))
+  assert.equal(new Set(history.snapshots.map(({ createdAt }) => createdAt)).size, 1)
+  assert.equal(history.snapshots[0].parentId, null)
+  assert.equal(history.snapshots[1].parentId, history.snapshots[0].id)
+  assert.equal(history.snapshots[2].parentId, history.snapshots[1].id)
+  assert.equal(project.manifest.projectType, 'html')
+  assert.equal(project.manifest.name, 'ATOM63 / Connected Panel Study')
+  assert.deepEqual(project.files, history.snapshots[2].project.files)
+  assert.match(project.files['style.css'], /width: 172px/)
+  assert.match(project.files['style.css'], /width: 260px/)
+  assert.match(project.files['style.css'], /filter: blur\(2px\)/)
+  assert.match(project.files['style.css'], /scale: \.7/)
+  assert.match(project.files['index.html'], /Display settings/)
+  assert.match(project.files['index.html'], /Adjust display and layout preferences/)
+  assert.match(project.files['index.html'], /Motion<\/span><strong>Full/)
+  assert.match(project.files['src/main.js'], /content\.scrollHeight/)
+  assert.match(project.files['src/main.js'], /transitionend/)
+  assert.match(project.files['src/main.js'], /aria-expanded/)
+  assert.ok(project.assets?.['EVIDENCE.md'])
+  assert.deepEqual(paths.filter((path) => path.endsWith('/project.json')).length, 3)
+  await assert.rejects(loadExampleStageProject(example.id, 'missing', '/MotionWorkbench/'), /Unknown example stage/)
+})
+
+test('ATOM63 Halftone stores six cumulative Canvas2D stages as History and opens the complete root project', async (context) => {
+  const requested: string[] = []
+  context.mock.method(globalThis, 'fetch', async (input: string) => {
+    requested.push(input)
+    const relative = input.slice('/MotionWorkbench/'.length)
+    return new Response(await readFile(new URL(`../public/${relative}`, import.meta.url)))
+  })
+
+  const example = examples.find(({ id }) => id === 'atom63-halftone')
+  assert.ok(example)
+  assert.equal(example.category, 'Design Engineering')
+  assert.equal(example.source, 'atom63.io/writing/halftone')
+  assert.deepEqual(example.stages?.map(({ id }) => id), ['core', 'ring-1', 'ring-2', 'cells', 'shapes', 'cursor-trail'])
+  const stageProjects = []
+  for (const [index, stage] of (example.stages ?? []).entries()) {
+    const project = await loadExampleStageProject(example.id, stage.id, '/MotionWorkbench/')
+    stageProjects.push(project)
+    assert.equal(project.manifest.projectType, 'html', stage.id)
+    assert.ok(project.files['index.html'].includes(`data-stage="${example.stages!.indexOf(stage) + 1}"`), stage.id)
+    assert.match(project.files['src/main.js'], /function fieldAt/)
+    assert.match(project.files['src/main.js'], new RegExp(`const stage = ${index + 1}`))
+    assert.match(project.files['src/main.js'], /workbench:params/)
+    assert.ok(project.assets?.['EVIDENCE.md'], stage.id)
+  }
+  const full = await loadExampleProject(example.id, '/MotionWorkbench/')
+  const result = await loadExampleProjectWithHistory(example.id, '/MotionWorkbench/')
+  assert.ok(result.history)
+  assert.equal(result.history.snapshots.length, 6)
+  assert.equal(result.history.snapshots[0].parentId, null)
+  assert.deepEqual(result.history.snapshots.slice(1).map(({ parentId }, index) => parentId === result.history!.snapshots[index].id), [true, true, true, true, true])
+  assert.equal(new Set(result.history.snapshots.map(({ createdAt }) => createdAt)).size, 1)
+  assert.equal(result.history.snapshots.at(-1)?.project.files['src/main.js'], full.files['src/main.js'])
+  assert.equal(result.project.files['src/main.js'], full.files['src/main.js'])
+  assert.equal(new Set(stageProjects.map((project) => project.files['src/main.js'])).size, 6)
+  assert.equal(full.manifest.name, 'ATOM63 / Antimetal Halftone Study')
+  assert.match(full.files['src/main.js'], /const stage = .*dataset\.stage/)
+  assert.match(full.files['src/main.js'], /function entryWave/)
+  assert.match(full.files['src/main.js'], /function fieldAt/)
+  assert.match(full.files['src/main.js'], /function coreField/)
+  assert.match(full.files['src/main.js'], /ring1Radius/)
+  assert.match(full.files['src/main.js'], /trailLife/)
+  assert.ok(requested.some((path) => path.endsWith('/stages/06-cursor-trail/project.json')))
+})
 
 test('example starters open as independent editable copies', async () => {
   assert.equal(new Set(examples.map((example) => example.id)).size, examples.length)
