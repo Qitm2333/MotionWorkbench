@@ -4,7 +4,7 @@ import Editor, { loader } from '@monaco-editor/react'
 import './monaco-workers'
 import * as monaco from 'monaco-editor'
 import { ModuleKind, ModuleResolutionKind, typescriptDefaults } from 'monaco-editor/languages/features/typescript/register.js'
-import { Activity, AlertCircle, BookOpen, Box, Check, ChevronDown, ChevronRight, Circle, Copy, Download, FileCode2, FilePlus2, Folder, FolderOpen, FolderPlus, Maximize2, Minimize2, Minus, Moon, Package, Pencil, Play, Plus, RotateCcw, Save, SlidersHorizontal, Square, Sun, Trash2, Upload, Waves, X } from 'lucide-react'
+import { Activity, AlertCircle, BookOpen, Box, Check, ChevronDown, ChevronRight, Circle, Copy, Download, FileCode2, FilePlus2, Folder, FolderOpen, FolderPlus, GitBranch, GitCommitHorizontal, History, Maximize2, Minimize2, Minus, Moon, Package, Pencil, Play, Plus, RotateCcw, Save, SlidersHorizontal, Square, Sun, Trash2, Upload, Waves, X } from 'lucide-react'
 import './App.css'
 import { createCurveFromPreset, curvePresets, isAllowedProjectFile, isProjectEntry, isProjectSource, readProjectDirectory, sampleCurveValue, starterHtmlProject, starterProject, starterReactProject, validateProject, writeProjectDirectory } from './project'
 import type { CurveResource, DirectoryHandle, Project } from './project'
@@ -15,6 +15,8 @@ import { assetMime, encodeAsset, isProjectAsset } from './assets'
 import { starterThreeProject } from './threeProject'
 import { clearDraft, readDraft, saveDraft } from './drafts'
 import type { ProjectDraft } from './drafts'
+import { createBranchFromSnapshot, createSnapshot, forkHistoryBranch, isSameProjectContent, layoutHistoryGraph, loadProjectHistory, restoreHistoryBaseline, saveProjectHistory } from './projectHistory'
+import type { ProjectHistory } from './projectHistory'
 
 loader.config({ monaco })
 
@@ -133,6 +135,7 @@ function App() {
   const [status, setStatus] = useState<Status>('ready')
   const [previewReady, setPreviewReady] = useState(false)
   const [message, setMessage] = useState('Ready to run')
+  const [commitSuccess, setCommitSuccess] = useState(false)
   const [split, setSplit] = useState(() => readLayout().split)
   const [consoleOpen, setConsoleOpen] = useState(() => readLayout().consoleOpen)
   const [editorFontSize, setEditorFontSize] = useState(readEditorFontSize)
@@ -148,6 +151,14 @@ function App() {
   const [examplesOpen, setExamplesOpen] = useState(false)
   const [draftPrompt, setDraftPrompt] = useState<ProjectDraft | null>(null)
   const [draftLoaded, setDraftLoaded] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [historyRecord, setHistoryRecord] = useState<{ projectId: string; history: ProjectHistory | null } | null>(null)
+  const [selectedSnapshotId, setSelectedSnapshotId] = useState<string | null>(null)
+  const [historyAutoRefresh, setHistoryAutoRefresh] = useState(true)
+  const [pendingHistoryBranch, setPendingHistoryBranch] = useState<{ snapshotId: string; name: string; workingProject: Project } | null>(null)
+  const [historyPanning, setHistoryPanning] = useState(false)
+  const [historyPanOffset, setHistoryPanOffset] = useState({ x: 0, y: 0 })
+  const [newBranchName, setNewBranchName] = useState('')
   const [projectLoadId, setProjectLoadId] = useState(0)
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set())
   const [directoryName, setDirectoryName] = useState('Orbit study')
@@ -158,6 +169,8 @@ function App() {
   const [explorerDragActive, setExplorerDragActive] = useState(false)
   const [theme, setTheme] = useState<'dark' | 'light'>(() => localStorage.getItem('workbench-theme') === 'light' ? 'light' : 'dark')
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const historyPanRef = useRef<{ pointerId: number; x: number; y: number; offsetX: number; offsetY: number } | null>(null)
+  const commitFeedbackTimeoutRef = useRef<number | null>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const runtimeRef = useRef<PreviewRuntime | null>(null)
   const projectRef = useRef(project)
@@ -167,6 +180,9 @@ function App() {
   const applyRequestRef = useRef(0)
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const stageRef = useRef<HTMLDivElement>(null)
+  const historyId = project.manifest.historyId
+  const projectHistory = historyId && historyRecord?.projectId === historyId ? historyRecord.history : null
+  const historyLoaded = !historyId || historyRecord?.projectId === historyId
 
   const measureStage = useCallback(() => {
     const stage = stageRef.current
@@ -199,11 +215,29 @@ function App() {
     editorRef.current?.updateOptions({ fontSize: editorFontSize, lineHeight: Math.round(editorFontSize * 21 / defaultEditorFontSize) })
   }, [editorFontSize])
 
+  useEffect(() => () => {
+    if (commitFeedbackTimeoutRef.current !== null) window.clearTimeout(commitFeedbackTimeoutRef.current)
+  }, [])
+
   useEffect(() => {
     let cancelled = false
     void readDraft().then((draft) => { if (!cancelled) setDraftPrompt(draft) }).catch(() => {}).finally(() => { if (!cancelled) setDraftLoaded(true) })
     return () => { cancelled = true }
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    const historyId = project.manifest.historyId
+    if (!historyId) return
+    void loadProjectHistory(historyId).then((history) => {
+      if (cancelled) return
+      setHistoryRecord({ projectId: historyId, history })
+    }).catch((error) => {
+      if (!cancelled) setMessage(error instanceof Error ? error.message : 'Could not load project history')
+      if (!cancelled) setHistoryRecord({ projectId: historyId, history: null })
+    })
+    return () => { cancelled = true }
+  }, [project.manifest.historyId])
 
   useEffect(() => {
     if (saved || !draftLoaded || draftPrompt) return
@@ -224,6 +258,8 @@ function App() {
   const assetFiles = useMemo(() => Object.keys(project.assets ?? {}).sort(), [project.assets])
   const assetTree = useMemo(() => buildFileTree(assetFiles), [assetFiles])
   const selectedCurve = project.manifest.curves?.find((curve) => curve.id === selectedCurveId)
+  const historyGraph = useMemo(() => projectHistory ? layoutHistoryGraph(projectHistory) : null, [projectHistory])
+  const selectedSnapshot = projectHistory?.snapshots.find((item) => item.id === selectedSnapshotId) ?? [...(projectHistory?.snapshots ?? [])].sort((a, b) => b.createdAt - a.createdAt)[0]
 
   useEffect(() => {
     typescriptDefaults.setEagerModelSync(true)
@@ -310,6 +346,45 @@ function App() {
       setMessage(error instanceof Error ? error.message : String(error))
     }
   }, [])
+
+  const previewHistorySnapshot = async (snapshotId: string) => {
+    const snapshot = projectHistory?.snapshots.find((item) => item.id === snapshotId)
+    if (!snapshot) return
+    const requestId = ++applyRequestRef.current
+    setMessage(`Previewing snapshot: ${snapshot.label}`)
+    try {
+      const runtime = snapshot.project.manifest.projectType !== 'canvas2d'
+        ? await startHtmlPreview(iframeRef.current!, snapshot.project, () => {}, snapshot.project.manifest.parameterValues, (error) => {
+          if (requestId !== applyRequestRef.current) return
+          setStatus('error')
+          setMessage(error.message)
+        }, () => requestId === applyRequestRef.current)
+        : await startPreview(canvasRef.current!, snapshot.project, (error) => {
+          if (requestId !== applyRequestRef.current) return
+          setStatus('error')
+          setMessage(error.message)
+        }, snapshot.project.manifest.parameterValues, () => requestId === applyRequestRef.current)
+      if (requestId !== applyRequestRef.current) {
+        runtime.dispose()
+        return
+      }
+      runtimeRef.current?.dispose()
+      runtimeRef.current = runtime
+      setPreviewReady(true)
+      setStatus('running')
+      setMessage(`Previewing snapshot: ${snapshot.label}`)
+    } catch (error) {
+      if (requestId !== applyRequestRef.current) return
+      setStatus('error')
+      setMessage(error instanceof Error ? error.message : String(error))
+    }
+  }
+
+  const selectHistorySnapshot = (snapshotId: string) => {
+    setPendingHistoryBranch(null)
+    setSelectedSnapshotId(snapshotId)
+    if (historyAutoRefresh) void previewHistorySnapshot(snapshotId)
+  }
 
   useEffect(() => {
     const request = requestAnimationFrame(() => { void applyCode() })
@@ -837,7 +912,7 @@ function App() {
     void applyCode()
   }
 
-  const loadProjectCopy = (nextProject: Project) => {
+  const loadProjectCopy = (nextProject: Project, preserveDirectory = false) => {
     // Invalidate an in-flight compile before replacing the preview and its state.
     applyRequestRef.current += 1
     runtimeRef.current?.dispose()
@@ -857,7 +932,7 @@ function App() {
     setSaved(false)
     setStatus('ready')
     setPreviewReady(false)
-    directoryRef.current = null
+    if (!preserveDirectory) directoryRef.current = null
   }
 
   const createProject = (type: 'canvas2d' | 'html' | 'react' | 'three') => {
@@ -874,6 +949,133 @@ function App() {
     setExamplesOpen(false)
     setMessage(`Opened example: ${exampleProject.manifest.name}`)
   }
+
+  const projectForHistory = () => {
+    const files = { ...projectRef.current.files }
+    for (const path of Object.keys(files)) {
+      const model = monaco.editor.getModel(projectModelUri(projectRef.current.manifest.name, path))
+      if (model) files[path] = model.getValue()
+    }
+    const activeModel = editorRef.current?.getModel()
+    if (activeModel && activeFile) files[activeFile] = activeModel.getValue()
+    return { ...projectRef.current, files }
+  }
+
+  const showCommitSuccess = (successMessage: string) => {
+    setMessage(successMessage)
+    setCommitSuccess(true)
+    if (commitFeedbackTimeoutRef.current !== null) window.clearTimeout(commitFeedbackTimeoutRef.current)
+    commitFeedbackTimeoutRef.current = window.setTimeout(() => {
+      setCommitSuccess(false)
+      commitFeedbackTimeoutRef.current = null
+    }, 1400)
+  }
+
+  const createHistorySnapshot = async () => {
+    try {
+      const currentProject = projectForHistory()
+      const branch = projectHistory?.branches.find((item) => item.id === projectHistory.activeBranchId)
+      const head = projectHistory?.snapshots.find((item) => item.id === branch?.headSnapshotId)
+      if (head && isSameProjectContent(currentProject, head.project)) {
+        setMessage('No changes to commit')
+        return
+      }
+      const label = `Commit ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`
+      const result = createSnapshot(projectHistory, currentProject, label)
+      await saveProjectHistory(result.history)
+      projectRef.current = result.project
+      setProject(result.project)
+      setHistoryRecord({ projectId: result.history.projectId, history: result.history })
+      setSelectedSnapshotId(result.snapshot.id)
+      setSaved(false)
+      showCommitSuccess(`Committed ${result.snapshot.label} on ${result.history.branches.find((branch) => branch.id === result.history.activeBranchId)?.name ?? 'main'}`)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error))
+    }
+  }
+
+  const restoreHistorySnapshot = async (snapshotId: string) => {
+    const snapshot = projectHistory?.snapshots.find((item) => item.id === snapshotId)
+    if (!snapshot) return
+    if (!window.confirm(`Restore “${snapshot.label}” as the current baseline? This replaces unsaved code and moves the work line back to this point. Later snapshots will be kept.`)) return
+    try {
+      const nextHistory = restoreHistoryBaseline(projectHistory!, snapshot.id)
+      await saveProjectHistory(nextHistory)
+      setHistoryRecord({ projectId: nextHistory.projectId, history: nextHistory })
+      loadProjectCopy(structuredClone(snapshot.project), true)
+      setSelectedSnapshotId(snapshot.id)
+      setHistoryOpen(false)
+      void applyCode()
+      setMessage(`Restored baseline to ${snapshot.label}; future commits continue from here.`)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error))
+    }
+  }
+
+  const createHistoryBranch = async () => {
+    if (!projectHistory || !selectedSnapshotId) return
+    try {
+      const currentProject = projectForHistory()
+      const baseline = projectHistory.snapshots.find((item) => item.id === selectedSnapshotId)
+      if (!baseline) throw new Error('The selected baseline is no longer available')
+      forkHistoryBranch(projectHistory, selectedSnapshotId, newBranchName)
+      if (!isSameProjectContent(currentProject, baseline.project)) {
+        setPendingHistoryBranch({ snapshotId: selectedSnapshotId, name: newBranchName.trim(), workingProject: currentProject })
+        return
+      }
+      await finishHistoryBranch(selectedSnapshotId, newBranchName, currentProject, 'snapshot')
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error))
+    }
+  }
+
+  const finishHistoryBranch = async (
+    snapshotId: string,
+    name: string,
+    workingProject: Project,
+    mode: 'snapshot' | 'working-copy',
+  ) => {
+    if (!projectHistory) return
+    try {
+      const result = createBranchFromSnapshot(projectHistory, snapshotId, name, workingProject, mode)
+      const replaceWorkingCopy = mode === 'snapshot' && !isSameProjectContent(workingProject, result.project)
+      await saveProjectHistory(result.history)
+      setHistoryRecord({ projectId: result.history.projectId, history: result.history })
+      setNewBranchName('')
+      setPendingHistoryBranch(null)
+      setSelectedSnapshotId(result.snapshot?.id ?? snapshotId)
+      setHistoryOpen(false)
+      if (replaceWorkingCopy) loadProjectCopy(structuredClone(result.project), true)
+      else if (result.snapshot) {
+        projectRef.current = result.project
+        setProject(result.project)
+        setSaved(false)
+        void applyCode()
+      }
+      if (result.snapshot) {
+        showCommitSuccess(`Created ${result.branch.name} and committed current code`)
+      } else {
+        setMessage(`Created ${result.branch.name} from ${projectHistory.snapshots.find((item) => item.id === snapshotId)?.label ?? 'selected snapshot'}`)
+      }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error))
+    }
+  }
+
+  const selectHistoryBranch = (branchId: string) => {
+    if (!projectHistory) return
+    const branch = projectHistory.branches.find((item) => item.id === branchId)
+    const head = projectHistory.snapshots.find((item) => item.id === branch?.headSnapshotId)
+    const base = projectHistory.snapshots.find((item) => item.id === branch?.baseSnapshotId)
+    const target = head ?? base
+    if (!branch || !target) return
+    selectHistorySnapshot(target.id)
+    setMessage(`Previewing ${branch.name} · ${head ? 'latest commit' : 'branch base'}`)
+  }
+
+  const activeHistoryBranch = projectHistory?.branches.find((branch) => branch.id === projectHistory.activeBranchId)
+  const activeHistoryHead = projectHistory?.snapshots.find((snapshot) => snapshot.id === activeHistoryBranch?.headSnapshotId)
+  const canCommitHistory = !activeHistoryHead || !isSameProjectContent(projectForHistory(), activeHistoryHead.project)
 
   const editorLanguage = useMemo(() => {
     if (/\.html?$/i.test(activeFile)) return 'html'
@@ -930,6 +1132,7 @@ function App() {
             <button className="tool-button" onClick={() => setNewProjectOpen(true)} title="Create a project"><FolderPlus size={15} /><span>New</span></button>
             <button className="tool-button" onClick={openProject} title="Open project folder"><FolderOpen size={15} /><span>Open</span></button>
             <button className="tool-button" onClick={() => void saveProject()} title="Save project folder"><Save size={15} /><span>Save</span></button>
+            <button className={`tool-button history-trigger ${historyOpen ? 'active' : ''}`} onClick={() => setHistoryOpen((open) => !open)} title="Open snapshot history"><History size={15} /><span>History</span></button>
           </div>
           <span className="top-separator" />
           <button className="tool-button" onClick={() => setExamplesOpen(true)} title="Browse examples"><BookOpen size={15} /><span>Examples</span></button>
@@ -972,7 +1175,78 @@ function App() {
         </aside>
 
         <section className="editor-area" style={{ gridTemplateColumns: `${split}fr 5px ${100 - split}fr` }}>
-          {workspaceMode === 'parameters' ? <section className="parameter-editor">
+          {historyOpen ? <section className="history-panel">
+            <div className="panel-tabs"><div className="active-tab"><History size={13} />History Flow</div><div className="history-toolbar">
+              <label className="history-auto-refresh"><input type="checkbox" checked={historyAutoRefresh} onChange={(event) => setHistoryAutoRefresh(event.target.checked)} />Auto refresh</label>
+              <button className="icon-button" onClick={() => setHistoryPanOffset({ x: 0, y: 0 })} title="Reset canvas position" aria-label="Reset canvas position"><RotateCcw size={13} /></button>
+              {projectHistory && <span className="history-active-branch">On {projectHistory.branches.find((branch) => branch.id === projectHistory.activeBranchId)?.name ?? 'main'}</span>}
+              {!historyAutoRefresh && <button className="icon-button" onClick={() => selectedSnapshot && void previewHistorySnapshot(selectedSnapshot.id)} disabled={!selectedSnapshot} title="Preview selected snapshot" aria-label="Preview selected snapshot"><Play size={14} /></button>}
+            </div></div>
+            {!historyLoaded ? <div className="history-empty">Loading local history…</div> : !projectHistory || !historyGraph ? <div className="history-empty"><History size={24} /><strong>No snapshots yet</strong><span>Create a snapshot to start this project’s local history.</span></div> : <div className="history-content">
+              <div
+                className={`history-graph-scroll ${historyPanning ? 'is-panning' : ''}`}
+                aria-label="Project history mind map"
+                onPointerDown={(event: ReactPointerEvent<HTMLDivElement>) => {
+                  if ((event.target as HTMLElement).closest('.history-graph-node')) return
+                  historyPanRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, offsetX: historyPanOffset.x, offsetY: historyPanOffset.y }
+                  setHistoryPanning(true)
+                  event.currentTarget.setPointerCapture(event.pointerId)
+                }}
+                onPointerMove={(event: ReactPointerEvent<HTMLDivElement>) => {
+                  const pan = historyPanRef.current
+                  if (!pan || pan.pointerId !== event.pointerId) return
+                  setHistoryPanOffset({ x: pan.offsetX + (event.clientX - pan.x), y: pan.offsetY + (event.clientY - pan.y) })
+                }}
+                onPointerUp={(event: ReactPointerEvent<HTMLDivElement>) => {
+                  if (historyPanRef.current?.pointerId !== event.pointerId) return
+                  historyPanRef.current = null
+                  setHistoryPanning(false)
+                  event.currentTarget.releasePointerCapture(event.pointerId)
+                }}
+                onPointerCancel={() => { historyPanRef.current = null; setHistoryPanning(false) }}
+              >
+                <div className="history-graph" style={{ width: historyGraph.width, height: historyGraph.height, transform: `translate(${historyPanOffset.x}px, ${historyPanOffset.y}px)` }}>
+                  <svg className="history-edges" width={historyGraph.width} height={historyGraph.height} aria-hidden="true">
+                    {historyGraph.branches.filter((branch) => branch.empty).map((branch) => {
+                      const midX = (branch.baseX + branch.x) / 2
+                      return <path className="history-branch-edge" key={branch.branch.id} d={`M ${branch.baseX} ${branch.baseY} C ${midX} ${branch.baseY}, ${midX} ${branch.y}, ${branch.x} ${branch.y}`} />
+                    })}
+                    {historyGraph.nodes.map((node) => {
+                      const parent = node.snapshot.parentId && historyGraph.nodes.find((candidate) => candidate.snapshot.id === node.snapshot.parentId)
+                      if (!parent) return null
+                      const parentX = parent.x + 1
+                      const nodeX = node.x + 1
+                      const midX = (parentX + nodeX) / 2
+                      return <path key={node.snapshot.id} d={`M ${parentX} ${parent.y} C ${midX} ${parent.y}, ${midX} ${node.y}, ${nodeX} ${node.y}`} />
+                    })}
+                  </svg>
+                  {historyGraph.branches.map((branch) => {
+                    const labelX = branch.empty ? branch.x : (branch.baseX + branch.x) / 2
+                    const labelY = branch.empty ? branch.y : (branch.baseY + branch.y) / 2
+                    return <button key={branch.branch.id} className={`history-branch-label ${branch.branch.id === projectHistory.activeBranchId ? 'active' : ''}`} style={{ left: labelX, top: labelY }} onPointerDown={(event) => event.stopPropagation()} onClick={() => selectHistoryBranch(branch.branch.id)} title={`Preview ${branch.branch.name}`}>{branch.branch.name}{branch.empty ? <span>start</span> : null}</button>
+                  })}
+                  {historyGraph.nodes.map((node) => {
+                    const timestamp = new Date(node.snapshot.createdAt).toLocaleString()
+                    const timeLabel = new Date(node.snapshot.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                    return <button key={node.snapshot.id} className={`history-graph-node ${selectedSnapshot?.id === node.snapshot.id ? 'selected' : ''} ${node.snapshot.branchId === projectHistory.activeBranchId ? 'active-branch' : ''}`} style={{ left: node.x, top: node.y }} onClick={() => selectHistorySnapshot(node.snapshot.id)} aria-label={`${node.snapshot.label}, ${timestamp}, ${node.branchName}`} aria-pressed={selectedSnapshot?.id === node.snapshot.id} data-tooltip={`${node.snapshot.label} · ${timestamp}`} title={`${node.snapshot.label} · ${timestamp}`}><span className="history-node-dot" /><span className="history-node-meta"><time>{timeLabel}</time><span className="history-node-branch">{node.branchName}</span></span></button>
+                  })}
+                </div>
+              </div>
+              {selectedSnapshot && <div className={`history-selection-bar ${pendingHistoryBranch ? 'branch-choice-open' : ''}`}>
+                {pendingHistoryBranch ? <>
+                  <div className="history-selection-copy"><strong>Start “{pendingHistoryBranch.name}” from {projectHistory.snapshots.find((item) => item.id === pendingHistoryBranch.snapshotId)?.label ?? 'selected snapshot'}?</strong><span>The editor has changes that differ from this snapshot.</span></div>
+                  <div className="history-branch-choice-actions">
+                    <button className="tool-button" onClick={() => void finishHistoryBranch(pendingHistoryBranch.snapshotId, pendingHistoryBranch.name, pendingHistoryBranch.workingProject, 'snapshot')}><GitBranch size={13} />Start from snapshot</button>
+                    <button className="tool-button primary-action" onClick={() => void finishHistoryBranch(pendingHistoryBranch.snapshotId, pendingHistoryBranch.name, pendingHistoryBranch.workingProject, 'working-copy')}><GitCommitHorizontal size={13} />Carry edits as first commit</button>
+                    <button className="icon-button" onClick={() => setPendingHistoryBranch(null)} title="Cancel branch creation" aria-label="Cancel branch creation"><X size={14} /></button>
+                  </div>
+                </> : <>
+                  <div className="history-selection-copy"><strong>{selectedSnapshot.label}</strong><span>{new Date(selectedSnapshot.createdAt).toLocaleString()} · {projectHistory.branches.find((branch) => branch.id === selectedSnapshot.branchId)?.name ?? 'unknown'}</span></div>
+                  <div className="history-selection-actions"><input value={newBranchName} onChange={(event) => setNewBranchName(event.target.value)} placeholder="New branch" aria-label="New branch name" onKeyDown={(event) => { if (event.key === 'Enter') void createHistoryBranch() }} /><button className="tool-button" onClick={() => void createHistoryBranch()} disabled={!newBranchName.trim()} title="Create a branch from the selected snapshot"><GitBranch size={13} />Create branch</button><button className="tool-button" onClick={() => restoreHistorySnapshot(selectedSnapshot.id)} title="Restore the selected snapshot as the current baseline"><RotateCcw size={13} />Restore</button></div>
+                </>}
+              </div>}
+            </div>}
+          </section> : workspaceMode === 'parameters' ? <section className="parameter-editor">
             <div className="panel-tabs"><div className="active-tab"><SlidersHorizontal size={13} />Parameters</div><div className="editor-actions"><button className="icon-button" onClick={resetParameters} disabled={!parameters.length} title="Restore parameter defaults"><RotateCcw size={13} /></button></div></div>
             <div className="parameter-editor-content">
               {parameters.length ? <div className="parameter-grid">{parameters.map((parameter) => <label className="parameter-card" key={parameter.id} data-parameter-id={parameter.id}>
@@ -1012,7 +1286,7 @@ function App() {
               </div>
             </div>
           </div> : <div className="editor-panel">
-            <div className="panel-tabs"><div className="active-tab"><FileCode2 size={13} />{activeFile}<span className="tab-dirty">{saved ? '' : '●'}</span></div><div className="editor-actions"><span>{editorLanguage === 'typescript' ? 'TypeScript' : editorLanguage.toUpperCase()}</span><div className="editor-font-controls" role="group" aria-label="Code editor font size"><button className="icon-button editor-font-button" onClick={() => setEditorFontSize((size) => Math.max(minEditorFontSize, size - 1))} disabled={editorFontSize <= minEditorFontSize} title="Decrease code font size" aria-label="Decrease code font size"><Minus size={13} /></button><output className="editor-font-readout" aria-live="polite">{editorFontSize}px</output><button className="icon-button editor-font-button" onClick={() => setEditorFontSize((size) => Math.min(maxEditorFontSize, size + 1))} disabled={editorFontSize >= maxEditorFontSize} title="Increase code font size" aria-label="Increase code font size"><Plus size={13} /></button><button className="icon-button editor-font-button editor-font-reset" onClick={() => setEditorFontSize(defaultEditorFontSize)} disabled={editorFontSize === defaultEditorFontSize} title="Reset code font size" aria-label="Reset code font size"><RotateCcw size={12} /></button></div><span>UTF-8</span></div></div>
+            <div className="panel-tabs"><div className="active-tab"><FileCode2 size={13} />{activeFile}<span className="tab-dirty">{saved ? '' : '●'}</span></div><div className="editor-actions"><span>{editorLanguage === 'typescript' ? 'TypeScript' : editorLanguage.toUpperCase()}</span><div className="editor-font-controls" role="group" aria-label="Code editor font size"><button className="icon-button editor-font-button" onClick={() => setEditorFontSize((size) => Math.max(minEditorFontSize, size - 1))} disabled={editorFontSize <= minEditorFontSize} title="Decrease code font size" aria-label="Decrease code font size"><Minus size={13} /></button><output className="editor-font-readout" aria-live="polite">{editorFontSize}px</output><button className="icon-button editor-font-button" onClick={() => setEditorFontSize((size) => Math.min(maxEditorFontSize, size + 1))} disabled={editorFontSize >= maxEditorFontSize} title="Increase code font size" aria-label="Increase code font size"><Plus size={13} /></button><button className="icon-button editor-font-button editor-font-reset" onClick={() => setEditorFontSize(defaultEditorFontSize)} disabled={editorFontSize === defaultEditorFontSize} title="Reset code font size" aria-label="Reset code font size"><RotateCcw size={12} /></button></div><span>UTF-8</span><button className="editor-commit" onClick={() => void createHistorySnapshot()} disabled={!historyLoaded || !canCommitHistory} title={canCommitHistory ? 'Commit all project files to local history' : 'No changes to commit'}><GitCommitHorizontal size={13} /><span>Commit</span></button></div></div>
             <div className="editor-body">
               <Editor
                 key={projectLoadId}
@@ -1059,7 +1333,7 @@ function App() {
         </section>
       </div>
 
-      <footer className="statusbar"><div><span className={`status-dot ${status}`} />{status === 'running' ? 'Running' : status === 'paused' ? 'Paused' : status === 'error' ? 'Build failed' : 'Idle'}<span className="status-divider" />{activeFile}</div><div><span>{project.manifest.projectType === 'canvas2d' ? 'Canvas2D' : project.manifest.projectType === 'react' ? 'React + TS' : 'HTML / CSS'}</span><span className="status-divider" /><span>Project format v1</span></div></footer>
+      <footer className={`statusbar ${commitSuccess ? 'commit-success' : ''}`}><div><span className={`status-dot ${status}`} />{status === 'running' ? 'Running' : status === 'paused' ? 'Paused' : status === 'error' ? 'Build failed' : 'Idle'}<span className="status-divider" />{activeFile}<span className="status-divider" /><span className="status-message" title={message}>{message}</span></div><div><span>{project.manifest.projectType === 'canvas2d' ? 'Canvas2D' : project.manifest.projectType === 'react' ? 'React + TS' : 'HTML / CSS'}</span><span className="status-divider" /><span>Project format v1</span></div></footer>
       {newProjectOpen && <div className="dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setNewProjectOpen(false) }}><section className="new-project-dialog" role="dialog" aria-modal="true" aria-labelledby="new-project-title"><div className="dialog-heading"><div><span className="dialog-eyebrow">START A STUDY</span><h2 id="new-project-title">New project</h2></div><button className="icon-button" onClick={() => setNewProjectOpen(false)} title="Close"><X size={16} /></button></div><div className="project-choices"><button className="project-choice" onClick={() => createProject('canvas2d')}><span className="choice-icon canvas-choice"><Activity size={18} /></span><span><strong>Canvas2D</strong><small>TypeScript scene with a frame loop</small></span><ChevronRight size={16} /></button><button className="project-choice" onClick={() => createProject('html')}><span className="choice-icon html-choice"><FileCode2 size={18} /></span><span><strong>HTML + CSS</strong><small>A page for small visual experiments</small></span><ChevronRight size={16} /></button><button className="project-choice" onClick={() => createProject('react')}><span className="choice-icon html-choice"><FileCode2 size={18} /></span><span><strong>React + TypeScript</strong><small>Multi-file component study</small></span><ChevronRight size={16} /></button><button className="project-choice" onClick={() => createProject('three')}><span className="choice-icon three-choice"><Box size={18} /></span><span><strong>Three.js</strong><small>WebGL scene with a local glTF model</small></span><ChevronRight size={16} /></button></div></section></div>}
       {pendingCurveDelete && <div className="dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setPendingCurveDelete(null) }}><section className="new-project-dialog curve-delete-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-curve-title"><div className="dialog-heading"><div><span className="dialog-eyebrow">CURVE RESOURCE</span><h2 id="delete-curve-title">Delete {project.manifest.curves?.find((curve) => curve.id === pendingCurveDelete)?.name}</h2></div><button className="icon-button" onClick={() => setPendingCurveDelete(null)} title="Close"><X size={16} /></button></div>{curveReferences(pendingCurveDelete).length ? <><p>This curve is sampled in <code>{curveReferences(pendingCurveDelete).join(', ')}</code>. Choose a replacement before deleting it.</p><label>REPLACE WITH<select value={curveReplacementId} onChange={(event) => setCurveReplacementId(event.target.value)}>{(project.manifest.curves ?? []).filter((curve) => curve.id !== pendingCurveDelete).map((curve) => <option key={curve.id} value={curve.id}>{curve.name} · {curve.id}</option>)}</select></label></> : <p>This curve has no literal <code>curves.sample(...)</code> references in project source.</p>}<div className="draft-actions"><button className="tool-button" onClick={() => setPendingCurveDelete(null)}>Cancel</button><button className="tool-button danger-action" disabled={curveReferences(pendingCurveDelete).length > 0 && !curveReplacementId} onClick={() => void confirmRemoveCurve()}><Trash2 size={13} />Delete curve</button></div></section></div>}
       {draftPrompt && <div className="dialog-backdrop"><section className="new-project-dialog draft-dialog" role="dialog" aria-modal="true" aria-labelledby="draft-title"><div className="dialog-heading"><div><span className="dialog-eyebrow">UNSAVED WORK</span><h2 id="draft-title">Recover this draft?</h2></div></div><p>{draftPrompt.project.manifest.name} · {new Date(draftPrompt.savedAt).toLocaleString()}</p><div className="draft-actions"><button className="tool-button" onClick={discardDraft}>Discard</button><button className="tool-button primary-action" onClick={recoverDraft}>Recover draft</button></div></section></div>}

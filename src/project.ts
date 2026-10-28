@@ -3,6 +3,7 @@ import type { ProjectAsset } from './assets.ts'
 
 export type ProjectManifest = {
   formatVersion: 1
+  historyId?: string
   name: string
   entry: string
   projectType: 'canvas2d' | 'html' | 'react'
@@ -345,6 +346,7 @@ export function validateProject(value: unknown): Project {
   if (!isRecord(value) || !isRecord(value.manifest) || !isRecord(value.files)) throw new Error('Project data must contain a manifest and source files')
   const manifest = value.manifest
   if (manifest.formatVersion !== 1) throw new Error(`Unsupported project format version: ${String(manifest.formatVersion)}`)
+  if (manifest.historyId !== undefined && (typeof manifest.historyId !== 'string' || !manifest.historyId.trim() || manifest.historyId.length > 128)) throw new Error('project.json has an invalid history ID')
   if (typeof manifest.name !== 'string' || !manifest.name.trim() || manifest.name.length > 120) throw new Error('project.json has an invalid project name')
   if (manifest.projectType !== 'canvas2d' && manifest.projectType !== 'html' && manifest.projectType !== 'react') throw new Error('project.json has an invalid project type')
   if (!isRecord(manifest.renderer) || manifest.renderer.type !== manifest.projectType) throw new Error('project.json renderer does not match the project type')
