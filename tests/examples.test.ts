@@ -257,6 +257,34 @@ test('example loading reports missing files and rejects unsafe manifests before 
   assert.equal(fetchMock.mock.callCount(), 1)
 })
 
+test('Kube Liquid Glass examples load as separate editable projects under a Pages base path', async (context) => {
+  let expectedDirectory = ''
+  let requested = new Set<string>()
+  context.mock.method(globalThis, 'fetch', async (input: string) => {
+    requested.add(input)
+    assert.ok(input.startsWith(`/MotionWorkbench/examples/${expectedDirectory}/`))
+    const relative = input.slice('/MotionWorkbench/'.length)
+    try {
+      return new Response(await readFile(new URL(`../public/${relative}`, import.meta.url)))
+    } catch {
+      return new Response('', { status: 404 })
+    }
+  })
+
+  for (const id of ['kube-liquid-glass', 'kube-liquid-glass-slider', 'kube-liquid-glass-music-player']) {
+    expectedDirectory = id
+    requested = new Set<string>()
+    const project = await loadExampleProject(id, '/MotionWorkbench/')
+    assert.equal(project.manifest.projectType, 'html')
+    assert.deepEqual(Object.keys(project.files).sort(), ['index.html', 'src/glass.js', 'src/main.js', 'style.css'])
+    assert.match(project.files['src/main.js'], /listenParameters/)
+    assert.match(project.files['index.html'], /Liquid glass/)
+    assert.ok(project.assets?.['EVIDENCE.md'])
+    assert.ok(project.assets?.['LICENSE.md'])
+    assert.equal(requested.size, 7)
+  }
+})
+
 test('Apple example loads every local resource with a deployment prefix and retains provenance', async (context) => {
   context.mock.method(globalThis, 'fetch', async (input: string) => {
     assert.ok(input.startsWith('/MotionWorkbench/examples/apple-duo-study/'))

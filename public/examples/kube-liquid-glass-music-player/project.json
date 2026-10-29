@@ -1,0 +1,14 @@
+{
+  "formatVersion": 1,
+  "name": "Kube Liquid Glass / Music Player",
+  "projectType": "html",
+  "entry": "index.html",
+  "renderer": { "type": "html" },
+  "sourceFiles": ["index.html", "style.css", "src/main.js", "src/glass.js"],
+  "assetFiles": ["EVIDENCE.md", "LICENSE.md"],
+  "metadata": {
+    "source": "https://kube.io/blog/liquid-glass-css-svg/#music-player",
+    "referenceRenderer": "SVG backdrop-filter with displacement and specular maps",
+    "licenseNote": "Source-led Kube study with locally generated filter textures adapted from the MIT liquid-glass component library. Album metadata and artwork come from iTunes at runtime. See EVIDENCE.md and LICENSE.md."
+  }
+}

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Liquid Glass Switch</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main class="study study-switch">
+    <header class="study-heading">
+      <h1>Switch</h1>
+      <p>This uses a lip bezel, which makes the surface convex on the outside and concave in the middle. This makes the center slider zoomed out, while the edges refract the inside.</p>
+    </header>
+    <section class="demo" aria-label="Liquid glass switch">
+      <div class="switch-stage" id="switchStage">
+        <button class="switch" id="glassSwitch" type="button" role="switch" aria-checked="true" aria-label="Liquid glass switch">
+          <span class="switch-track"></span>
+          <span class="switch-thumb" id="switchThumb"></span>
+        </button>
+        <label class="force-active"><input id="forceActive" type="checkbox" checked /> <span>Force active</span></label>
+      </div>
+      <div class="parameters" aria-label="Switch parameters">
+        <label class="parameter-row"><span>Specular opacity</span><output id="specularOpacityOut">0.50</output><input id="specularOpacity" type="range" min="0" max="1" step="0.01" value="0.5" /></label>
+        <label class="parameter-row"><span>Specular saturation</span><output id="specularSaturationOut">6</output><input id="specularSaturation" type="range" min="0" max="50" step="1" value="6" /></label>
+        <label class="parameter-row"><span>Refraction level</span><output id="refractionLevelOut">1.00</output><input id="refractionLevel" type="range" min="0" max="1" step="0.01" value="1" /></label>
+        <label class="parameter-row"><span>Blur level</span><output id="blurLevelOut">0.2</output><input id="blurLevel" type="range" min="0" max="40" step="0.1" value="0.2" /></label>
+      </div>
+      <p class="compat-note" id="compatNote" hidden>SVG filters as backdrop-filter are only supported in Chromium. A frosted glass fallback is shown in this browser.</p>
+    </section>
+  </main>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

@@ -89,6 +89,59 @@ test('ATOM63 Halftone opens the full effect with cumulative iterations in Histor
   expect(errors).toEqual([])
 })
 
+test('Kube Liquid Glass Switch, Slider, and Music Player are separate interactive examples', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  await page.route('https://itunes.apple.com/search*', async (route) => route.fulfill({
+    contentType: 'application/json',
+    body: JSON.stringify({ resultCount: 2, results: [
+      { trackName: 'Little Wing', collectionName: 'Axis: Bold as Love', artistName: 'Jimi Hendrix', trackTimeMillis: 180000 },
+      { trackName: 'Voodoo Child', collectionName: 'Electric Ladyland', artistName: 'Jimi Hendrix', trackTimeMillis: 240000 },
+    ] }),
+  }))
+  await page.goto('./')
+  await openExample(page, 'Liquid Glass / Switch')
+  const frame = preview(page)
+  await expect(frame.locator('#glassSwitch')).toBeVisible()
+  await expect(page.locator('.parameter-count')).toHaveText('4')
+  const switchEffect = await frame.locator('#switchThumb').evaluate((element) => ({
+    filter: getComputedStyle(element).backdropFilter,
+    opacity: getComputedStyle(element).backgroundColor,
+    displacement: Number(document.querySelector('#switch-filter feDisplacementMap')?.getAttribute('scale')),
+  }))
+  expect(switchEffect.filter).toContain('switch-filter')
+  expect(switchEffect.opacity).toBe('rgba(255, 255, 255, 0.098)')
+  expect(switchEffect.displacement).toBeGreaterThan(10)
+  await expect(frame.locator('#forceActive')).toBeChecked()
+  await frame.locator('#forceActive').uncheck()
+  await expect(frame.locator('#switchThumb')).toHaveCSS('background-color', 'rgb(255, 255, 255)')
+  await frame.locator('#glassSwitch').click()
+  await expect(frame.locator('#glassSwitch')).toHaveAttribute('aria-checked', 'false')
+  await frame.locator('#forceActive').check()
+  await expect(frame.locator('#forceActive')).toBeChecked()
+  await expect(frame.locator('#switchThumb')).toHaveCSS('background-color', 'rgba(255, 255, 255, 0.098)')
+
+  await openExample(page, 'Liquid Glass / Slider')
+  await expect(frame.locator('#slider')).toBeVisible()
+  await expect(page.locator('.parameter-count')).toHaveText('4')
+  await expect.poll(() => frame.locator('#sliderThumb').evaluate((element) => getComputedStyle(element).backdropFilter)).toContain('slider-filter')
+  await expect.poll(() => frame.locator('#slider-filter feDisplacementMap').getAttribute('scale').then(Number)).toBeGreaterThan(10)
+  await frame.locator('#slider').focus()
+  await frame.locator('#slider').press('ArrowRight')
+  await expect(frame.locator('#slider')).toHaveAttribute('aria-valuenow', '11')
+
+  await openExample(page, 'Liquid Glass / Music Player')
+  await expect(frame.locator('#albumSearch')).toHaveValue('Jimi Hendrix')
+  await expect.poll(() => frame.locator('#playerGlass').evaluate((element) => getComputedStyle(element).backdropFilter)).toContain('player-filter')
+  await expect(frame.locator('.album')).toHaveCount(2)
+  await frame.locator('.album').first().click()
+  await expect(frame.locator('#trackTitle')).toHaveText('Little Wing')
+  await frame.locator('#playButton').click()
+  await expect(frame.locator('#playButton')).toHaveAttribute('aria-label', 'Pause')
+  await expect(page.locator('.parameter-count')).toHaveText('6')
+  expect(errors).toEqual([])
+})
+
 test('Space Type Cylinder exposes source controls and renders an editable study', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(error.message))

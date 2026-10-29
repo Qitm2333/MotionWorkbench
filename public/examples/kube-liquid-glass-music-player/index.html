@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Liquid Glass Music Player</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main class="study">
+    <header class="study-heading">
+      <h1>Music Player</h1>
+      <p>This fake music player UI tries to mimic the look of Apple Music's Liquid Glass panels, using a convex bezel and a subtle specular highlight.</p>
+      <p>It relies on the iTunes Search API to fetch album art and song details.</p>
+    </header>
+    <section class="music-demo" aria-label="Liquid glass music player">
+      <div class="album-scroll" id="albumScroll">
+        <div class="album-toolbar">
+          <div class="search-glass" id="searchGlass">
+            <span class="search-icon" aria-hidden="true"></span>
+            <input id="albumSearch" type="search" value="Jimi Hendrix" placeholder="Search albums" aria-label="Search albums" />
+          </div>
+        </div>
+        <h2 id="resultsHeading">Top Results</h2>
+        <div class="album-grid" id="albumGrid" aria-live="polite"></div>
+        <p class="search-status" id="searchStatus" role="status"></p>
+      </div>
+      <div class="progressive-blur" id="progressiveBlur" aria-hidden="true">
+        <div class="blur-band blur-band-a"></div><div class="blur-band blur-band-b"></div><div class="blur-band blur-band-c"></div><div class="blur-tint"></div>
+      </div>
+      <div class="player-glass" id="playerGlass"></div>
+      <div class="player-controls">
+        <div class="track-info" id="trackInfo">
+          <img id="trackArtwork" alt="" />
+          <div class="track-copy"><strong id="trackTitle">Search albums</strong><span id="trackArtist">Choose a result to play</span><span class="track-progress"><i id="trackProgress"></i></span></div>
+        </div>
+        <div class="transport">
+          <button type="button" id="shuffleButton" aria-label="Shuffle" title="Shuffle">⤨</button>
+          <button type="button" id="previousButton" aria-label="Previous" title="Previous">|◀</button>
+          <button type="button" class="play-button" id="playButton" aria-label="Play" title="Play">▶</button>
+          <button type="button" id="nextButton" aria-label="Next" title="Next">▶|</button>
+          <button type="button" id="repeatButton" aria-label="Repeat" title="Repeat">↻</button>
+        </div>
+        <div class="player-actions">
+          <button type="button" aria-label="More Options" title="More Options">•••</button>
+          <button type="button" aria-label="List" title="List">☷</button>
+          <button type="button" aria-label="Radio" title="Radio">◉</button>
+          <button type="button" aria-label="Volume" title="Volume">◖))</button>
+        </div>
+      </div>
+    </section>
+    <div class="parameters" aria-label="Music player parameters">
+      <label class="parameter-row"><span>Specular opacity</span><output id="specularOpacityOut">0.40</output><input id="specularOpacity" type="range" min="0" max="1" step="0.01" value="0.4" /></label>
+      <label class="parameter-row"><span>Specular saturation</span><output id="specularSaturationOut">6</output><input id="specularSaturation" type="range" min="0" max="50" step="1" value="6" /></label>
+      <label class="parameter-row"><span>Refraction level</span><output id="refractionLevelOut">1.00</output><input id="refractionLevel" type="range" min="0" max="1" step="0.01" value="1" /></label>
+      <label class="parameter-row"><span>Blur level</span><output id="blurLevelOut">1.0</output><input id="blurLevel" type="range" min="0" max="40" step="0.1" value="1" /></label>
+      <label class="parameter-row"><span>Progressive blur strength</span><output id="progressiveBlurStrengthOut">1.00</output><input id="progressiveBlurStrength" type="range" min="0" max="10" step="0.01" value="1" /></label>
+      <label class="parameter-row"><span>Glass background opacity</span><output id="glassBackgroundOpacityOut">0.28</output><input id="glassBackgroundOpacity" type="range" min="0" max="1" step="0.01" value="0.28" /></label>
+    </div>
+    <p class="compat-note" id="compatNote" hidden>SVG filters as backdrop-filter are only supported in Chromium. A frosted glass fallback is shown in this browser.</p>
+  </main>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Liquid Glass Slider</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main class="study">
+    <header class="study-heading">
+      <h1>Slider</h1>
+      <p>Slider allows you to see the current level through the glass, while the sides refract the background. It uses a convex bezel.</p>
+    </header>
+    <section class="demo" aria-label="Liquid glass slider">
+      <div class="slider-stage">
+        <div class="slider" id="slider" role="slider" aria-label="Level" aria-valuemin="0" aria-valuemax="100" aria-valuenow="10" tabindex="0">
+          <span class="slider-track"></span>
+          <span class="slider-fill" id="sliderFill"></span>
+          <span class="slider-thumb" id="sliderThumb"></span>
+        </div>
+      </div>
+      <div class="parameters" aria-label="Slider parameters">
+        <label class="parameter-row"><span>Specular opacity</span><output id="specularOpacityOut">0.40</output><input id="specularOpacity" type="range" min="0" max="1" step="0.01" value="0.4" /></label>
+        <label class="parameter-row"><span>Specular saturation</span><output id="specularSaturationOut">7</output><input id="specularSaturation" type="range" min="0" max="50" step="1" value="7" /></label>
+        <label class="parameter-row"><span>Refraction level</span><output id="refractionLevelOut">1.00</output><input id="refractionLevel" type="range" min="0" max="1" step="0.01" value="1" /></label>
+        <label class="parameter-row"><span>Blur level</span><output id="blurLevelOut">0.0</output><input id="blurLevel" type="range" min="0" max="40" step="0.1" value="0" /></label>
+      </div>
+      <p class="compat-note" id="compatNote" hidden>SVG filters as backdrop-filter are only supported in Chromium. A frosted glass fallback is shown in this browser.</p>
+    </section>
+  </main>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
