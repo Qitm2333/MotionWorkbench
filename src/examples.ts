@@ -31,6 +31,23 @@ export type ExampleStage = {
 
 const existingExamples: Example[] = [
   {
+    id: 'apple-music-liquid',
+    name: 'Apple Music liquid logo',
+    category: 'Exploration',
+    renderer: 'WebGL2 / spectral optics',
+    description: 'A source-faithful reconstruction of the four-second Apple Music liquid-logo film: fitted oil surfaces, spectral refraction, studio reflections, motion blur, bloom, and two editable shots.',
+    highlights: [
+      'Play, scrub, or step the original two-shot timeline frame by frame.',
+      'Tune the source project\'s oil, lighting, grading, spectral sampling, and shutter controls in Parameters.',
+      'Drop a logo onto the frame or replace the icon and wordmark independently.',
+    ],
+    projectDirectory: 'apple-music-liquid',
+    viewport: '1200x800',
+    compatibility: 'Requires WebGL2 and EXT_color_buffer_float',
+    source: 'apple-music-effect.transitivebullsh.it',
+    license: 'MIT source adaptation; Apple study artwork is separately attributed in EVIDENCE.md',
+  },
+  {
     id: 'kube-liquid-glass',
     name: 'Liquid Glass / Switch',
     category: 'Design Engineering',

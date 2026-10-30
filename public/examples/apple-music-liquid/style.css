@@ -1,0 +1,139 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #000;
+  color: #d7d7d7;
+}
+
+* { box-sizing: border-box; }
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #000;
+}
+
+button,
+input { font: inherit; }
+
+button { color: inherit; }
+
+.app-shell {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) 48px;
+  width: 100%;
+  height: 100%;
+  background: #000;
+}
+
+.stage {
+  position: relative;
+  display: grid;
+  min-height: 0;
+  place-items: center;
+  overflow: hidden;
+  background: #000;
+}
+
+canvas {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  cursor: pointer;
+  outline: none;
+  background: #000;
+}
+
+.drop-outline {
+  position: absolute;
+  inset: 16px;
+  border: 1px dashed transparent;
+  pointer-events: none;
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+.dropping .drop-outline {
+  border-color: #8fc8ff;
+  background: rgb(91 170 255 / 6%);
+}
+
+.transport {
+  display: grid;
+  grid-template-columns: 58px minmax(120px, 1fr) auto auto 1px auto auto;
+  align-items: center;
+  gap: 10px;
+  height: 48px;
+  padding: 0 14px;
+  border-top: 1px solid #242424;
+  background: #111;
+  font-size: 12px;
+}
+
+button {
+  height: 28px;
+  border: 1px solid #343434;
+  border-radius: 4px;
+  background: #1b1b1b;
+  cursor: pointer;
+}
+
+button:hover { background: #252525; }
+button:focus-visible { outline: 1px solid #6bb6ff; outline-offset: 2px; }
+
+.play {
+  border-color: #3c78a8;
+  background: #174f78;
+  color: #fff;
+}
+
+.play:hover { background: #1d628f; }
+
+.quiet { padding: 0 9px; }
+.scrubber-label { display: grid; align-items: center; }
+
+input[type="range"] {
+  width: 100%;
+  accent-color: #4b9bd3;
+  cursor: ew-resize;
+}
+
+.shot {
+  min-width: 68px;
+  color: #a8a8a8;
+}
+
+.time {
+  min-width: 86px;
+  color: #d0d0d0;
+  font-family: Consolas, "Courier New", monospace;
+  text-align: right;
+}
+
+.divider { width: 1px; height: 20px; background: #303030; }
+
+.status {
+  position: absolute;
+  left: 14px;
+  bottom: 56px;
+  max-width: calc(100% - 28px);
+  margin: 0;
+  color: #b8cce0;
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.status[data-error="true"] { color: #ff8d8d; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+@media (max-width: 720px) {
+  .transport {
+    grid-template-columns: 54px minmax(80px, 1fr) auto;
+  }
+  .shot,
+  .divider,
+  .quiet { display: none; }
+  .time { min-width: 84px; }
+}

@@ -1,0 +1,36 @@
+{
+  "formatVersion": 1,
+  "name": "Apple Music liquid logo study",
+  "projectType": "html",
+  "entry": "index.html",
+  "renderer": { "type": "html" },
+  "sourceFiles": [
+    "index.html",
+    "style.css",
+    "src/main.js",
+    "src/player.js",
+    "src/clock.js",
+    "src/brand.js",
+    "src/assets.js",
+    "src/scene.js",
+    "src/dome-data.js",
+    "src/dome.js",
+    "src/driver.js",
+    "src/engine.js",
+    "src/gl.js",
+    "src/resolution.js",
+    "src/shaders.js"
+  ],
+  "assetFiles": [
+    "apple/note.svg",
+    "apple/wordmark.svg",
+    "EVIDENCE.md",
+    "LICENSE.md"
+  ],
+  "metadata": {
+    "source": "https://apple-music-effect.transitivebullsh.it/",
+    "sourceRepository": "https://github.com/transitive-bullshit/apple-music-effect",
+    "sourceCommit": "e31a67602ea03659d60de5290f85b657d11ab27d",
+    "licenseNote": "MIT code adaptation. Apple logo study assets remain subject to Apple's rights; see EVIDENCE.md."
+  }
+}

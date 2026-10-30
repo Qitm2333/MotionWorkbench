@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Apple Music liquid logo study</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="stage" aria-label="Liquid logo film">
+        <canvas tabindex="0" aria-label="Play or pause the liquid logo film"></canvas>
+        <div class="drop-outline" aria-hidden="true"></div>
+      </section>
+      <footer class="transport">
+        <button class="play" type="button" data-play aria-pressed="false">Play</button>
+        <label class="scrubber-label">
+          <span class="sr-only">Film time</span>
+          <input data-scrub type="range" min="0" max="4" value="0" step="0.001" />
+        </label>
+        <span class="shot" data-shot>Icon</span>
+        <output class="time" data-time>0.00 / 4.00 s</output>
+        <span class="divider" aria-hidden="true"></span>
+        <button class="quiet" type="button" data-upload="icon">Icon logo</button>
+        <button class="quiet" type="button" data-upload="wordmark">Wordmark</button>
+        <input data-file hidden type="file" accept="image/svg+xml,image/png,image/jpeg,image/webp" />
+      </footer>
+      <p class="status" data-status aria-live="polite"></p>
+    </main>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
