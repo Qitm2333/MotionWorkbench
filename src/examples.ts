@@ -31,6 +31,23 @@ export type ExampleStage = {
 
 const existingExamples: Example[] = [
   {
+    id: 'thinking-orbs',
+    name: 'Thinking Orbs',
+    category: 'Exploration',
+    renderer: 'Canvas2D / procedural dots',
+    description: 'Nine source-defined thinking states rendered from deterministic 3D dot geometry on a plain 2D canvas, with separate 20px and 64px tunings.',
+    highlights: [
+      'Switch among working, searching, solving, listening, connecting, weaving, composing, breathing, and shaping.',
+      'Compare the source-tuned inline and avatar sizes, theme inversion, and speed multiplier.',
+      'Inspect the original geometry modules and presets as editable project files.',
+    ],
+    projectDirectory: 'thinking-orbs',
+    viewport: '1200x800',
+    compatibility: 'Canvas2D; no WebGL or external runtime dependencies',
+    source: 'github.com/Jakubantalik/thinking-orbs',
+    license: 'MIT',
+  },
+  {
     id: 'apple-music-liquid',
     name: 'Apple Music liquid logo',
     category: 'Exploration',

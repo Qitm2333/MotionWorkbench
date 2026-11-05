@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Thinking Orbs</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="workbench-orbs" data-theme="dark">
+      <header class="page-header">
+        <div>
+          <p class="eyebrow">CANVAS 2D / MIT SOURCE PORT</p>
+          <h1>Thinking Orbs</h1>
+          <p class="subtitle">Nine motion languages for an agent at work.</p>
+        </div>
+        <span class="source-badge">No WebGL</span>
+      </header>
+
+      <section class="preview" aria-label="Selected thinking orb preview">
+        <div class="preview-meta"><span data-state-name>Listening</span><span data-preset-size>64 px preset</span></div>
+        <canvas class="hero-orb" width="128" height="128" role="img" aria-label="Listening animation"></canvas>
+        <div class="preview-controls">
+          <button class="play-button" type="button" data-play aria-pressed="false">Play</button>
+          <label class="speed-control"><span>Speed</span><input data-speed type="range" min="25" max="300" step="5" value="100" aria-label="Animation speed"><output data-speed-output>1.00×</output></label>
+        </div>
+      </section>
+
+      <section class="states-section" aria-labelledby="states-title">
+        <div class="section-heading"><div><p class="eyebrow">STATE LIBRARY</p><h2 id="states-title">Choose a motion</h2></div><div class="theme-control" role="group" aria-label="Orb theme"><button type="button" data-theme-choice="dark" aria-pressed="true">Dark</button><button type="button" data-theme-choice="light" aria-pressed="false">Light</button></div></div>
+        <div class="state-grid" data-states></div>
+      </section>
+
+      <footer class="page-footer"><span>Original 20 px and 64 px presets · monochrome ink · reduced motion respected</span><a href="https://github.com/Jakubantalik/thinking-orbs" target="_blank" rel="noreferrer">Source · MIT</a></footer>
+    </main>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>

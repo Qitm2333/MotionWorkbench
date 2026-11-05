@@ -1,0 +1,32 @@
+{
+  "formatVersion": 1,
+  "name": "Thinking Orbs",
+  "projectType": "html",
+  "entry": "index.html",
+  "renderer": { "type": "html" },
+  "sourceFiles": [
+    "index.html",
+    "style.css",
+    "src/main.js",
+    "src/types.js",
+    "src/presets.js",
+    "src/engine/index.js",
+    "src/engine/types.js",
+    "src/engine/core.js",
+    "src/engine/profiles.js",
+    "src/engine/registry.js",
+    "src/engine/orbits.js",
+    "src/engine/lattice.js",
+    "src/engine/web.js",
+    "src/engine/braid.js",
+    "src/engine/ribbon.js",
+    "src/engine/morph.js"
+  ],
+  "assetFiles": ["EVIDENCE.md", "LICENSE.md"],
+  "metadata": {
+    "source": "https://github.com/Jakubantalik/thinking-orbs",
+    "sourceCommit": "de85557ca220332586d070d8788c0e1d6e877a0d",
+    "license": "MIT",
+    "licenseNote": "Original Canvas2D geometry, profiles, and 9x2 presets are adapted from the MIT-licensed upstream source. See LICENSE.md and EVIDENCE.md."
+  }
+}
